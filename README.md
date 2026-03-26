@@ -33,35 +33,27 @@ Any website          ──►  LLM Structure       ──►  Index         ─
 ## Quick Start
 
 ```bash
-# 1. Clone and set up
 git clone https://github.com/albertgd/ai-subject-matter-expert.git
 cd ai-subject-matter-expert
-./setup.sh
-
-# 2. Configure
-cp .env.example .env
-# Edit .env — set ANTHROPIC_API_KEY (or OPENAI/GOOGLE) and your SUBJECT
-
-# 3. Research your subject
-source venv/bin/activate
-python scripts/research.py --max 50
-
-# 4. Process (clean + PII + structure)
-python scripts/process_data.py --limit 50 --fast-model
-
-# 5. Build the knowledge base
-python scripts/build_rag.py
-
-# 6. Launch the app
-streamlit run src/app.py
-# Open http://localhost:8501
+./setup.sh   # installs everything
+./run.sh     # opens the app at http://localhost:8501
 ```
+
+The app walks you through the rest — no terminal commands or file editing needed:
+
+1. **Setup page** — enter your API key, pick a subject from presets (or type your own)
+2. **Pipeline page** → click **Build Everything** — researches the web, processes docs, builds the KB
+3. **Chat page** — ask questions, get grounded answers with cited sources
+
+![Setup → Pipeline → Chat]
 
 ---
 
 ## Changing the Subject
 
-The only thing you need to change is your `.env`:
+The easiest way is the **Setup page** in the app — pick a preset or type your own subject.
+
+Alternatively, edit `.env` directly:
 
 ```bash
 SUBJECT=quantum physics
@@ -89,6 +81,19 @@ SUBJECT=divorce law
 SUBJECT_DESCRIPTION=divorce and family law proceedings
 SUBJECT_KEYWORDS=divorce,custody,alimony,child support,marital property
 ```
+
+---
+
+## UI Pages
+
+| Page | What it does |
+|---|---|
+| 🛠️ **Setup** | Enter API key + choose subject — writes `.env` for you |
+| 🏠 **Home** | Status dashboard + one-click "Build Everything" |
+| 💬 **Chat** | Ask questions, get grounded answers with cited sources |
+| ⚙️ **Pipeline** | Run research / processing / KB build with real-time logs |
+| 🔍 **Knowledge Base** | Search and browse indexed content |
+| 📦 **Dataset** | View, download JSONL, upload to HuggingFace |
 
 ---
 

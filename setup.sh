@@ -1,52 +1,64 @@
 #!/usr/bin/env bash
-# AI Subject Matter Expert — setup script
+# AI Subject Matter Expert — one-command setup
 set -e
 
-echo "================================================="
-echo "  AI Subject Matter Expert — Setup"
-echo "================================================="
+BOLD='\033[1m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 
-# Create virtual environment if it doesn't exist
+echo ""
+echo -e "${BOLD}=================================================${NC}"
+echo -e "${BOLD}  🧠  AI Subject Matter Expert — Setup${NC}"
+echo -e "${BOLD}=================================================${NC}"
+echo ""
+
+# Python version check
+PY=$(python3 --version 2>&1 | grep -oE '[0-9]+\.[0-9]+' | head -1)
+MAJOR=$(echo $PY | cut -d. -f1)
+MINOR=$(echo $PY | cut -d. -f2)
+if [ "$MAJOR" -lt 3 ] || ( [ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 10 ] ); then
+    echo -e "${RED}ERROR: Python 3.10+ required (found $PY)${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓${NC} Python $PY"
+
+# Virtual environment
 if [ ! -d "venv" ]; then
-    echo "[1/6] Creating virtual environment..."
+    echo "  Creating virtual environment..."
     python3 -m venv venv
 fi
-
-# Activate
 source venv/bin/activate
+echo -e "${GREEN}✓${NC} Virtual environment ready"
 
-echo "[2/6] Upgrading pip..."
+# Dependencies
+echo "  Installing dependencies (this may take a minute)..."
 pip install --upgrade pip --quiet
-
-echo "[3/6] Installing dependencies..."
 pip install -r requirements.txt --quiet
+echo -e "${GREEN}✓${NC} Dependencies installed"
 
-echo "[4/6] Installing spaCy English model (for PII removal)..."
-python -m spacy download en_core_web_lg --quiet || \
-    python -m spacy download en_core_web_sm --quiet || \
-    echo "  WARNING: spaCy model not installed. PII removal will use regex only."
+# spaCy model (for PII removal)
+echo "  Downloading spaCy language model..."
+python -m spacy download en_core_web_lg --quiet 2>/dev/null || \
+    python -m spacy download en_core_web_sm --quiet 2>/dev/null || \
+    echo -e "${YELLOW}  ⚠ spaCy model not installed — PII removal will use regex only${NC}"
+echo -e "${GREEN}✓${NC} Language model ready"
 
-echo "[5/6] Installing Playwright browsers (optional — for JS-heavy scraping)..."
-playwright install chromium --quiet || \
-    echo "  WARNING: Playwright not installed. JS-heavy scraping will be skipped."
-
-# Create .env if it doesn't exist
+# .env
 if [ ! -f ".env" ]; then
-    echo "[6/6] Creating .env from template..."
     cp .env.example .env
-    echo ""
-    echo "  ACTION REQUIRED: Edit .env and add your API keys."
+    echo -e "${GREEN}✓${NC} Created .env from template"
 else
-    echo "[6/6] .env already exists, skipping."
+    echo -e "${GREEN}✓${NC} .env already exists"
 fi
 
 echo ""
-echo "================================================="
-echo "  Setup complete!"
-echo "================================================="
+echo -e "${BOLD}=================================================${NC}"
+echo -e "${GREEN}${BOLD}  Setup complete!${NC}"
+echo -e "${BOLD}=================================================${NC}"
 echo ""
-echo "Next steps:"
-echo "  1. Edit .env and add your ANTHROPIC_API_KEY (or OPENAI_API_KEY)"
-echo "  2. Run:  source venv/bin/activate"
-echo "  3. Run:  ./run.sh"
+echo -e "  Start the app:  ${BOLD}./run.sh${NC}"
+echo ""
+echo -e "  The app will guide you through the rest:"
+echo -e "    1. Enter your API key (Anthropic / OpenAI / Google)"
+echo -e "    2. Choose a subject"
+echo -e "    3. Click 'Build Everything'"
+echo -e "    4. Chat with your expert"
 echo ""
