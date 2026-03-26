@@ -1,12 +1,12 @@
 """
-Vector store — ChromaDB-backed semantic search over legal cases.
+Vector store — ChromaDB-backed semantic search over any subject's documents.
 
 Collections:
-  - {domain}_opinions    : Full case chunks (facts, reasoning, ruling)
-  - {domain}_learnings   : Distilled legal knowledge / principles
-  - {domain}_summaries   : Case summaries for quick overview retrieval
+  - {subject}_documents : Full document chunks (content)
+  - {subject}_learnings : Distilled knowledge / key insights
+  - {subject}_summaries : Document summaries for quick overview retrieval
 
-All collections use the same multilingual sentence-transformer embeddings
+All collections use multilingual sentence-transformer embeddings
 so cross-lingual queries work out of the box.
 """
 
@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 
 class VectorStore:
     """
-    Manages ChromaDB collections for case law retrieval.
+    Manages ChromaDB collections for subject-matter document retrieval.
 
     Usage:
         store = VectorStore()
-        store.add_documents(docs, collection="opinions")
-        results = store.search("custody best interests", k=5)
+        store.add_documents(docs, collection="documents")
+        results = store.search("what is backpropagation", k=5)
     """
 
     def __init__(
@@ -58,7 +58,7 @@ class VectorStore:
     def _collection_name(self, suffix: str) -> str:
         return f"{self.collection_prefix}_{suffix}"
 
-    def get_collection(self, suffix: str = "opinions"):
+    def get_collection(self, suffix: str = "documents"):
         """Get or create a ChromaDB collection."""
         if suffix not in self._stores:
             from langchain_chroma import Chroma
@@ -69,7 +69,7 @@ class VectorStore:
             )
         return self._stores[suffix]
 
-    def collection_count(self, suffix: str = "opinions") -> int:
+    def collection_count(self, suffix: str = "documents") -> int:
         """Return number of documents in a collection."""
         try:
             store = self.get_collection(suffix)
@@ -81,12 +81,11 @@ class VectorStore:
     def add_documents(
         self,
         documents: List[Document],
-        collection: str = "opinions",
+        collection: str = "documents",
         batch_size: int = 100,
     ) -> int:
         """
         Add documents to a collection in batches.
-
         Returns number of documents added.
         """
         if not documents:
@@ -97,7 +96,6 @@ class VectorStore:
         col_name = self._collection_name(collection)
         persist_dir = str(self.persist_dir)
 
-        # Check if the collection already has documents
         existing_store = self.get_collection(collection)
         try:
             existing_count = existing_store._collection.count()
@@ -107,7 +105,6 @@ class VectorStore:
         added = 0
 
         if existing_count == 0:
-            # Use from_documents for the first population — more reliable initialization
             first_batch = documents[:batch_size]
             try:
                 new_store = Chroma.from_documents(
@@ -126,7 +123,6 @@ class VectorStore:
         else:
             remaining = documents
 
-        # Add remaining batches incrementally
         store = self._stores[collection]
         for i in range(0, len(remaining), batch_size):
             batch = remaining[i:i + batch_size]
@@ -139,63 +135,64 @@ class VectorStore:
 
         return added
 
-    def add_from_cases(self, cases: List[Dict]) -> Dict[str, int]:
+    def add_from_documents(self, documents: List[Dict]) -> Dict[str, int]:
         """
-        Index a list of processed case dicts into all collections.
+        Index a list of processed document dicts into all collections.
+
+        Document fields used:
+          - text        → chunked into 'documents' collection
+          - key_points  → 'learnings' collection
+          - learnings   → appended to 'learnings' collection
+          - summary     → 'summaries' collection
 
         Returns dict of {collection: count_added}.
         """
-        opinion_docs = []
+        content_docs = []
         learning_docs = []
         summary_docs = []
 
-        for case in cases:
-            source_id = case.get("source_id", "unknown")
+        for doc in documents:
+            source_id = doc.get("source_id", "unknown")
             base_meta = {
                 "source_id": source_id,
-                "source_name": case.get("source_name", ""),
-                "title": case.get("title", "")[:500],
-                "url": case.get("url", ""),
-                "date": case.get("date", ""),
-                "court": case.get("court", ""),
-                "practice_areas": ",".join(case.get("practice_areas", [])),
+                "source_name": doc.get("source_name", ""),
+                "title": doc.get("title", "")[:500],
+                "url": doc.get("url", ""),
+                "date": doc.get("date", ""),
+                "author": doc.get("author", ""),
+                "topics": ",".join(doc.get("topics", [])),
             }
 
-            title = case.get("title", source_id)
+            title = doc.get("title", source_id)
 
-            # Opinion chunks: facts + reasoning + ruling
-            case_opinion_count = 0
-            for section in ["facts", "reasoning", "ruling"]:
-                content = case.get(section, "").strip()
-                if content and len(content) > 30:
-                    opinion_docs.append(Document(
-                        page_content=f"[{section.upper()} — {title}]\n\n{content}",
-                        metadata={**base_meta, "section": section},
+            # Content: full text, chunked
+            text = doc.get("text", "").strip()
+            if text and len(text) > 30:
+                chunks = self._chunk_text(text, max_chars=2000, overlap=200)
+                for j, chunk in enumerate(chunks):
+                    content_docs.append(Document(
+                        page_content=f"[{title}]\n\n{chunk}",
+                        metadata={**base_meta, "section": "content", "chunk": j},
                     ))
-                    case_opinion_count += 1
 
-            # Fallback: use full text if no structured sections were added
-            if case_opinion_count == 0:
-                full_text = case.get("text", "").strip()
-                if full_text:
-                    # Chunk the full text
-                    chunks = self._chunk_text(full_text, max_chars=2000, overlap=200)
-                    for j, chunk in enumerate(chunks):
-                        opinion_docs.append(Document(
-                            page_content=f"[TEXT — {title}]\n\n{chunk}",
-                            metadata={**base_meta, "section": "text", "chunk": j},
-                        ))
+            # Learnings: key_points + learnings fields
+            learnings_parts = []
+            key_points = doc.get("key_points", "").strip()
+            learnings = doc.get("learnings", "").strip()
+            if key_points and len(key_points) > 30:
+                learnings_parts.append(key_points)
+            if learnings and len(learnings) > 30:
+                learnings_parts.append(learnings)
 
-            # Learnings
-            learnings = case.get("learnings", "").strip()
-            if learnings and len(learnings) > 50:
+            if learnings_parts:
+                combined = "\n\n".join(learnings_parts)
                 learning_docs.append(Document(
-                    page_content=f"[LEARNINGS — {title}]\n\n{learnings}",
+                    page_content=f"[KEY INSIGHTS — {title}]\n\n{combined}",
                     metadata={**base_meta, "section": "learnings"},
                 ))
 
             # Summary
-            summary = case.get("summary", "").strip()
+            summary = doc.get("summary", "").strip()
             if summary and len(summary) > 50:
                 summary_docs.append(Document(
                     page_content=f"[SUMMARY — {title}]\n\n{summary}",
@@ -203,8 +200,8 @@ class VectorStore:
                 ))
 
         counts = {}
-        if opinion_docs:
-            counts["opinions"] = self.add_documents(opinion_docs, collection="opinions")
+        if content_docs:
+            counts["documents"] = self.add_documents(content_docs, collection="documents")
         if learning_docs:
             counts["learnings"] = self.add_documents(learning_docs, collection="learnings")
         if summary_docs:
@@ -217,7 +214,7 @@ class VectorStore:
         self,
         query: str,
         k: int = 5,
-        collection: str = "opinions",
+        collection: str = "documents",
         filter_dict: Optional[Dict] = None,
     ) -> List[Document]:
         """Semantic similarity search."""
@@ -228,7 +225,7 @@ class VectorStore:
         self,
         query: str,
         k: int = 5,
-        collection: str = "opinions",
+        collection: str = "documents",
         filter_dict: Optional[Dict] = None,
     ) -> List[Tuple[Document, float]]:
         """Semantic similarity search with relevance scores."""
@@ -238,14 +235,14 @@ class VectorStore:
     def multi_search(
         self,
         query: str,
-        k_opinions: int = 4,
+        k_documents: int = 4,
         k_learnings: int = 3,
         k_summaries: int = 2,
     ) -> Dict[str, List[Tuple[Document, float]]]:
         """Search across all collections and return merged results."""
         results = {}
         for collection, k in [
-            ("opinions", k_opinions),
+            ("documents", k_documents),
             ("learnings", k_learnings),
             ("summaries", k_summaries),
         ]:
@@ -262,7 +259,7 @@ class VectorStore:
 
     def reset_all(self):
         """Delete all collections (full rebuild)."""
-        for suffix in ["opinions", "learnings", "summaries"]:
+        for suffix in ["documents", "learnings", "summaries"]:
             try:
                 self.delete_collection(suffix)
             except Exception:
@@ -279,7 +276,6 @@ class VectorStore:
         start = 0
         while start < len(text):
             end = min(start + max_chars, len(text))
-            # Try to break at sentence boundary
             if end < len(text):
                 for sep in [". ", ".\n", "\n\n", "\n"]:
                     pos = text.rfind(sep, start + max_chars // 2, end)
@@ -288,7 +284,6 @@ class VectorStore:
                         break
             chunks.append(text[start:end].strip())
             next_start = end - overlap
-            # Guard against infinite loop: always advance by at least 1
             if next_start <= start:
                 next_start = start + 1
             start = next_start
@@ -299,5 +294,5 @@ class VectorStore:
         """Return document counts for all collections."""
         return {
             suffix: self.collection_count(suffix)
-            for suffix in ["opinions", "learnings", "summaries"]
+            for suffix in ["documents", "learnings", "summaries"]
         }

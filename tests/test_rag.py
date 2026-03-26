@@ -15,16 +15,16 @@ sys.path.insert(0, str(ROOT))
 # ── VectorStore tests ─────────────────────────────────────────────────────────
 class TestVectorStore:
     def test_search_returns_results(self, populated_store):
-        store, cases = populated_store
-        results = store.search("child custody best interests", k=2, collection="opinions")
+        store, docs = populated_store
+        results = store.search("what is a neural network", k=2, collection="documents")
         assert len(results) > 0
-        known_titles = {c["title"] for c in cases}
+        known_titles = {d["title"] for d in docs}
         for r in results:
             assert r.metadata.get("title") in known_titles
 
     def test_search_with_score(self, populated_store):
         store, _ = populated_store
-        results = store.search_with_score("alimony spousal support", k=2, collection="learnings")
+        results = store.search_with_score("gradient descent backpropagation", k=2, collection="learnings")
         assert len(results) > 0
         for doc, score in results:
             assert isinstance(score, float)
@@ -32,14 +32,14 @@ class TestVectorStore:
 
     def test_multi_search(self, populated_store):
         store, _ = populated_store
-        results = store.multi_search("property division equitable")
+        results = store.multi_search("transformer attention mechanism")
         assert len(results) > 0
 
     def test_stats(self, populated_store):
         store, _ = populated_store
         stats = store.stats()
         assert sum(stats.values()) > 0
-        assert set(stats.keys()) == {"opinions", "learnings", "summaries"}
+        assert set(stats.keys()) == {"documents", "learnings", "summaries"}
 
 
 def test_chunk_text_pure():
@@ -55,17 +55,14 @@ def test_chunk_text_pure():
 def test_reset_all(fake_embeddings):
     """Test that reset_all clears all collections."""
     from src.rag.vector_store import VectorStore
-    cases = [
+    docs = [
         {
-            "source_id": "r_001", "source_name": "T", "title": "Reset Test Case",
-            "url": "", "date": "", "court": "",
-            "text": "Court ruled on custody matters.",
-            "facts": "Parent sought custody modification after relocation.",
-            "ruling": "Custody modified to joint arrangement.",
-            "reasoning": "Relocation significantly changed circumstances.",
-            "learnings": "Relocation triggers custody review.",
-            "summary": "Joint custody awarded after relocation.",
-            "practice_areas": ["custody"], "structured": True,
+            "source_id": "r_001", "source_name": "Test", "title": "Reset Test",
+            "url": "", "date": "", "author": "",
+            "text": "Machine learning is a subset of artificial intelligence.",
+            "summary": "ML is a core AI technique.",
+            "key_points": "ML learns from data.", "learnings": "Data drives ML.",
+            "topics": ["machine learning"], "structured": True,
         }
     ]
     with tempfile.TemporaryDirectory() as tmpd:
@@ -74,7 +71,7 @@ def test_reset_all(fake_embeddings):
             collection_prefix="rst",
             embeddings=fake_embeddings,
         )
-        store.add_from_cases(cases)
+        store.add_from_documents(docs)
         assert sum(store.stats().values()) > 0
         store.reset_all()
         assert sum(store.stats().values()) == 0
@@ -82,21 +79,18 @@ def test_reset_all(fake_embeddings):
 
 # ── Indexer tests ─────────────────────────────────────────────────────────────
 def test_indexer_load_and_index(fake_embeddings):
-    """Test that Indexer loads and indexes processed case files."""
+    """Test that Indexer loads and indexes processed document files."""
     from src.rag.vector_store import VectorStore
     from src.rag.indexer import Indexer
 
-    cases = [
+    docs = [
         {
-            "source_id": "idx_001", "source_name": "T", "title": "Index Test",
-            "url": "", "date": "", "court": "",
-            "text": "Divorce proceeding involving property division.",
-            "facts": "The parties sought equitable distribution of assets.",
-            "ruling": "Assets divided equally.",
-            "reasoning": "Court found both parties contributed equally.",
-            "learnings": "Equal contribution leads to equal division.",
-            "summary": "Assets divided equally after equal contributions found.",
-            "practice_areas": ["property_division"], "structured": True,
+            "source_id": "idx_001", "source_name": "Test", "title": "Index Test",
+            "url": "", "date": "", "author": "",
+            "text": "Deep learning uses multiple layers to learn representations from data.",
+            "summary": "Deep learning overview.",
+            "key_points": "Uses many layers.", "learnings": "Layers enable abstraction.",
+            "topics": ["deep learning"], "structured": True,
         }
     ]
 
@@ -104,9 +98,9 @@ def test_indexer_load_and_index(fake_embeddings):
         tmpdir = Path(tmpd)
         processed_dir = tmpdir / "processed"
         processed_dir.mkdir()
-        for case in cases:
-            (processed_dir / f"{case['source_id']}.json").write_text(
-                json.dumps(case), encoding="utf-8"
+        for doc in docs:
+            (processed_dir / f"{doc['source_id']}.json").write_text(
+                json.dumps(doc), encoding="utf-8"
             )
 
         store = VectorStore(
@@ -116,7 +110,7 @@ def test_indexer_load_and_index(fake_embeddings):
         )
         indexer = Indexer(store=store, processed_dir=processed_dir)
 
-        loaded = indexer.load_processed_cases()
+        loaded = indexer.load_processed_documents()
         assert len(loaded) == 1
 
         counts = indexer.index_all(force_rebuild=True)
@@ -128,16 +122,16 @@ class TestRetriever:
     def test_retrieve_returns_context_and_sources(self, populated_store):
         from src.rag.retriever import Retriever
         store, _ = populated_store
-        retriever = Retriever(store=store, k_opinions=2, k_learnings=2, k_summaries=1)
-        context, sources = retriever.retrieve("child custody")
+        retriever = Retriever(store=store, k_documents=2, k_learnings=2, k_summaries=1)
+        context, sources = retriever.retrieve("neural network layers")
         assert isinstance(context, str) and len(context) > 50
         assert isinstance(sources, list)
 
     def test_retrieve_with_results(self, populated_store):
         from src.rag.retriever import Retriever
         store, _ = populated_store
-        retriever = Retriever(store=store, k_opinions=2, k_learnings=2, k_summaries=1)
-        context, sources = retriever.retrieve("alimony spousal support")
+        retriever = Retriever(store=store, k_documents=2, k_learnings=2, k_summaries=1)
+        context, sources = retriever.retrieve("backpropagation gradient descent")
         assert len(context) > 50
         assert len(sources) > 0
 

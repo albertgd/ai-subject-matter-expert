@@ -1,5 +1,5 @@
 """
-Text cleaner — normalize and clean raw scraped legal text.
+Text cleaner — normalize and clean raw scraped web text.
 
 Handles:
   - Boilerplate removal (navigation, disclaimers, ads)
@@ -81,13 +81,17 @@ class TextCleaner:
 
         return text.strip()
 
-    def clean_case(self, case: dict) -> dict:
-        """Clean the text field of a raw case dict. Returns updated dict."""
-        cleaned = self.clean(case.get("text", ""))
+    def clean_document(self, doc: dict) -> dict:
+        """Clean the text field of a raw document dict. Returns updated dict."""
+        cleaned = self.clean(doc.get("text", ""))
         if cleaned:
-            case = dict(case)  # don't mutate original
-            case["text"] = cleaned
-        return case
+            doc = dict(doc)  # don't mutate original
+            doc["text"] = cleaned
+        return doc
+
+    # backward-compat alias
+    def clean_case(self, case: dict) -> dict:
+        return self.clean_document(case)
 
     # ── Private methods ───────────────────────────────────
     @staticmethod

@@ -22,9 +22,9 @@ PRIMARY_LLM = os.getenv("PRIMARY_LLM", "claude-sonnet-4-6")
 HF_TOKEN = os.getenv("HF_TOKEN", "")
 HF_REPO_ID = os.getenv("HF_REPO_ID", "")
 
-# ── External APIs ─────────────────────────────────────────
-COURTLISTENER_API_TOKEN = os.getenv("COURTLISTENER_API_TOKEN", "")
-CASELAW_API_KEY = os.getenv("CASELAW_API_KEY", "")
+# ── Search APIs (for web research) ────────────────────────
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")   # optional — better quality
+# DuckDuckGo needs no key and is always available
 
 # ── Data paths ────────────────────────────────────────────
 RAW_DATA_DIR = ROOT / os.getenv("RAW_DATA_DIR", "data/raw")
@@ -35,33 +35,34 @@ RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
 VECTOR_DB_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Domain ────────────────────────────────────────────────
-DOMAIN = os.getenv("DOMAIN", "divorce")
-DOMAIN_DESCRIPTION = os.getenv(
-    "DOMAIN_DESCRIPTION",
-    "divorce law and family law proceedings in the United States"
+# ── Subject ───────────────────────────────────────────────
+SUBJECT = os.getenv("SUBJECT", "artificial intelligence")
+SUBJECT_DESCRIPTION = os.getenv(
+    "SUBJECT_DESCRIPTION",
+    "artificial intelligence, machine learning, and deep learning"
 )
-SEARCH_KEYWORDS = [
+SUBJECT_KEYWORDS = [
     kw.strip()
     for kw in os.getenv(
-        "SEARCH_KEYWORDS",
-        "divorce,custody,alimony,child support,marital property,separation agreement"
+        "SUBJECT_KEYWORDS",
+        "artificial intelligence,machine learning,deep learning,neural networks,LLM,GPT,transformers"
     ).split(",")
     if kw.strip()
 ]
 
-# ── Scraper settings ──────────────────────────────────────
-MAX_CASES_PER_SOURCE = int(os.getenv("MAX_CASES_PER_SOURCE", "500"))
-SCRAPER_DELAY_MIN = float(os.getenv("SCRAPER_DELAY_MIN", "1.0"))
-SCRAPER_DELAY_MAX = float(os.getenv("SCRAPER_DELAY_MAX", "3.0"))
+# ── Research settings ─────────────────────────────────────
+MAX_DOCS_PER_SOURCE = int(os.getenv("MAX_DOCS_PER_SOURCE", "200"))
+MAX_SEARCH_RESULTS = int(os.getenv("MAX_SEARCH_RESULTS", "10"))  # per query
+RESEARCH_DELAY_MIN = float(os.getenv("RESEARCH_DELAY_MIN", "1.0"))
+RESEARCH_DELAY_MAX = float(os.getenv("RESEARCH_DELAY_MAX", "3.0"))
 
 # ── Embeddings ────────────────────────────────────────────
 EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-COLLECTION_NAME = f"{DOMAIN}_cases"
+COLLECTION_NAME = SUBJECT.lower().replace(" ", "_")[:30]
 
 # ── RAG ───────────────────────────────────────────────────
-DEFAULT_K_CASES = 5
-DEFAULT_K_PRINCIPLES = 3
+DEFAULT_K_DOCS = int(os.getenv("DEFAULT_K_DOCS", "5"))
+DEFAULT_K_LEARNINGS = int(os.getenv("DEFAULT_K_LEARNINGS", "3"))
 
 
 def active_llm_provider() -> str:

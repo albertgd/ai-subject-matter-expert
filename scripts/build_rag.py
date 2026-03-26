@@ -1,11 +1,11 @@
 """
-build_rag.py — Build the ChromaDB vector knowledge base from processed cases.
+build_rag.py — Build the ChromaDB vector knowledge base from processed documents.
 
 Reads all JSON files from data/processed/ and indexes them into three
 ChromaDB collections:
-  - {domain}_opinions   : case facts, reasoning, rulings
-  - {domain}_learnings  : distilled legal principles
-  - {domain}_summaries  : concise case overviews
+  - {subject}_documents : full content chunks
+  - {subject}_learnings : distilled key insights
+  - {subject}_summaries : concise document overviews
 
 Usage:
     python scripts/build_rag.py             # incremental (skip existing)
@@ -62,7 +62,7 @@ def main():
         existing = store.stats()
         if sum(existing.values()) > 0:
             print(f"Existing index found: {existing}")
-            print("Running incremental indexing (new cases only)...")
+            print("Running incremental indexing (new documents only)...")
             counts = indexer.index_new()
         else:
             print("No existing index. Building from scratch...")

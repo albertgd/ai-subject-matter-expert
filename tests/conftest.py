@@ -35,56 +35,53 @@ def fake_embeddings():
     return FakeEmbeddings()
 
 
+SAMPLE_DOCUMENTS = [
+    {
+        "source_id": "test_001", "source_name": "Wikipedia",
+        "title": "Neural Networks", "url": "https://en.wikipedia.org/wiki/Neural_network",
+        "date": "2024-01-01", "author": "Wikipedia contributors",
+        "text": "A neural network is a series of algorithms that endeavors to recognize underlying relationships in a set of data through a process that mimics the way the human brain operates.",
+        "summary": "Neural networks are computing systems inspired by biological neural networks that form animal brains.",
+        "key_points": "1. Neural networks learn from examples.\n2. They consist of layers of nodes.\n3. Deep learning uses many hidden layers.",
+        "learnings": "Neural networks are universal function approximators.",
+        "topics": ["neural networks", "deep learning", "machine learning"],
+        "structured": True,
+    },
+    {
+        "source_id": "test_002", "source_name": "Wikipedia",
+        "title": "Backpropagation", "url": "https://en.wikipedia.org/wiki/Backpropagation",
+        "date": "2024-01-02", "author": "Wikipedia contributors",
+        "text": "Backpropagation is an algorithm widely used in training feedforward artificial neural networks by computing gradients of the loss function with respect to the weights.",
+        "summary": "Backpropagation computes gradients efficiently using the chain rule to train neural networks.",
+        "key_points": "1. Uses chain rule of calculus.\n2. Updates weights via gradient descent.\n3. Requires differentiable activation functions.",
+        "learnings": "Backpropagation enables efficient gradient computation in neural networks.",
+        "topics": ["backpropagation", "neural networks", "gradient descent"],
+        "structured": True,
+    },
+    {
+        "source_id": "test_003", "source_name": "ArXiv",
+        "title": "Transformers in NLP", "url": "https://arxiv.org/abs/1706.03762",
+        "date": "2017-06-12", "author": "Vaswani et al.",
+        "text": "The transformer architecture relies on attention mechanisms and has become the dominant approach in natural language processing tasks.",
+        "summary": "Transformers use self-attention to process sequences in parallel, enabling state-of-the-art NLP.",
+        "key_points": "1. Attention is all you need.\n2. Transformers replaced RNNs for many tasks.\n3. BERT and GPT are based on transformers.",
+        "learnings": "Self-attention allows models to relate positions in a sequence to each other.",
+        "topics": ["transformers", "NLP", "attention mechanism"],
+        "structured": True,
+    },
+]
+
+
 @pytest.fixture(scope="module")
 def populated_store(fake_embeddings):
-    """Module-scoped VectorStore populated with sample cases."""
-    import json
+    """Module-scoped VectorStore populated with sample documents."""
     from src.rag.vector_store import VectorStore
-
-    SAMPLE_CASES = [
-        {
-            "source_id": "test_001", "source_name": "TestSource",
-            "title": "Anderson v. Anderson", "url": "https://example.com/001",
-            "date": "2023-03-15", "court": "California Supreme Court",
-            "text": "The court awarded joint legal custody considering best interests.",
-            "facts": "The parties divorced after 12 years with two children aged 8 and 10.",
-            "ruling": "Joint legal custody; primary physical custody to mother.",
-            "reasoning": "Best interests standard applied. Mother was primary caregiver.",
-            "learnings": "1. Best interests is paramount.\n2. Caregiver status matters.\n3. Joint custody preserves rights.",
-            "summary": "Court awarded joint legal custody with primary physical to primary caregiver.",
-            "practice_areas": ["custody", "divorce"], "structured": True,
-        },
-        {
-            "source_id": "test_002", "source_name": "TestSource",
-            "title": "Brown v. Brown", "url": "https://example.com/002",
-            "date": "2022-07-22", "court": "New York Family Court",
-            "text": "Equitable distribution of marital assets applied in this divorce case.",
-            "facts": "Husband earned $150k; wife unemployed for 5 years raising children.",
-            "ruling": "60/40 equitable distribution in wife's favor.",
-            "reasoning": "Equitable distribution considers contributions and earning capacity.",
-            "learnings": "1. Equal does not mean equitable.\n2. Non-economic contributions count.\n3. Future earning capacity matters.",
-            "summary": "Court applied equitable distribution awarding wife 60% of marital assets.",
-            "practice_areas": ["property_division", "divorce"], "structured": True,
-        },
-        {
-            "source_id": "test_003", "source_name": "TestSource",
-            "title": "Williams v. Williams", "url": "https://example.com/003",
-            "date": "2021-11-30", "court": "Texas Court of Appeals",
-            "text": "Rehabilitative alimony awarded after career sacrifice in long marriage.",
-            "facts": "20-year marriage. Wife gave up career. Husband earns $200k.",
-            "ruling": "Rehabilitative alimony for 3 years.",
-            "reasoning": "Career sacrifice during long marriage supports alimony award.",
-            "learnings": "1. Career sacrifice supports alimony.\n2. Rehabilitative alimony restores capacity.\n3. Duration tied to re-entry time.",
-            "summary": "Court awarded 3-year rehabilitative alimony after career sacrifice in 20-year marriage.",
-            "practice_areas": ["alimony", "spousal_support", "divorce"], "structured": True,
-        },
-    ]
 
     with tempfile.TemporaryDirectory() as tmpd:
         store = VectorStore(
             persist_dir=Path(tmpd) / "vdb",
-            collection_prefix="fixture_cases",
+            collection_prefix="fixture_docs",
             embeddings=fake_embeddings,
         )
-        store.add_from_cases(SAMPLE_CASES)
-        yield store, SAMPLE_CASES
+        store.add_from_documents(SAMPLE_DOCUMENTS)
+        yield store, SAMPLE_DOCUMENTS

@@ -4,14 +4,16 @@ AI Subject Matter Expert — Streamlit Web Interface
 Pages:
   1. Home          — Overview and quick stats
   2. Chat          — Conversational RAG agent
-  3. Explore       — Browse cases by topic
-  4. Data Pipeline — Scrape, process, build RAG
+  3. Explore       — Browse knowledge base by topic
+  4. Data Pipeline — Research, process, build RAG
   5. Dataset       — View and download processed dataset
   6. HuggingFace   — Upload dataset to HF Hub
   7. About         — Tech stack and architecture
 """
 
+import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -24,17 +26,16 @@ sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / ".env")
 
 from src.config import (
-    DOMAIN, DOMAIN_DESCRIPTION, ANTHROPIC_API_KEY, OPENAI_API_KEY,
-    GOOGLE_API_KEY, HF_TOKEN, HF_REPO_ID,
+    SUBJECT, SUBJECT_DESCRIPTION, SUBJECT_KEYWORDS,
+    ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY,
+    HF_TOKEN, HF_REPO_ID,
     RAW_DATA_DIR, PROCESSED_DATA_DIR, VECTOR_DB_DIR,
-    SEARCH_KEYWORDS,
 )
-
 
 # ── Page config ───────────────────────────────────────────
 st.set_page_config(
-    page_title=f"AI {DOMAIN.title()} SME",
-    page_icon="⚖️",
+    page_title=f"AI SME — {SUBJECT.title()}",
+    page_icon="🧠",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -43,827 +44,587 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #1e3a8a;
-        text-align: center;
-        padding: 0.8rem 0;
+        font-size: 2.2rem; font-weight: 700;
+        color: #1e3a8a; text-align: center; padding: 0.8rem 0;
     }
     .sub-header {
-        text-align: center;
-        color: #475569;
-        font-size: 1.1rem;
-        margin-bottom: 1.5rem;
+        text-align: center; color: #475569;
+        font-size: 1.1rem; margin-bottom: 1.5rem;
     }
     .stat-card {
         background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%);
-        border-radius: 12px;
-        padding: 1.2rem;
-        text-align: center;
+        border-radius: 12px; padding: 1.2rem; text-align: center;
         border: 1px solid #c7d2fe;
     }
-    .stat-number {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #1e3a8a;
-    }
-    .stat-label {
-        font-size: 0.85rem;
-        color: #64748b;
-        margin-top: 0.2rem;
-    }
+    .stat-number { font-size: 2rem; font-weight: 700; color: #1e3a8a; }
+    .stat-label { font-size: 0.85rem; color: #64748b; margin-top: 0.2rem; }
     .source-card {
-        background: #f8fafc;
-        border-left: 3px solid #3b82f6;
-        border-radius: 0 8px 8px 0;
-        padding: 0.8rem 1rem;
-        margin: 0.4rem 0;
+        background: #f8fafc; border-left: 3px solid #3b82f6;
+        border-radius: 0 8px 8px 0; padding: 0.8rem 1rem; margin: 0.4rem 0;
     }
-    .disclaimer {
-        background: #fef3c7;
-        border-left: 4px solid #f59e0b;
-        padding: 0.8rem 1rem;
-        border-radius: 0 8px 8px 0;
-        font-size: 0.85rem;
-        color: #78350f;
-    }
-    div[data-testid="stButton"] > button {
-        border-radius: 8px;
+    .step-box {
+        background: #f0fdf4; border: 1px solid #86efac;
+        border-radius: 8px; padding: 1rem; margin: 0.5rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ── Helpers ───────────────────────────────────────────────
-def _check_api_keys() -> bool:
-    return bool(ANTHROPIC_API_KEY or OPENAI_API_KEY or GOOGLE_API_KEY)
-
-
-def _get_agent():
-    """Initialize SME agent once per session."""
-    if "sme_agent" not in st.session_state:
-        with st.spinner("Loading knowledge base and AI model..."):
-            from src.agents.sme_agent import SMEAgent
-            st.session_state.sme_agent = SMEAgent()
-            st.session_state.chat_messages = []
-    return st.session_state.sme_agent
-
-
-def _get_kb_stats():
-    """Get knowledge base stats (cached in session)."""
-    if "kb_stats" not in st.session_state:
-        try:
-            from src.rag.vector_store import VectorStore
-            store = VectorStore()
-            st.session_state.kb_stats = store.stats()
-        except Exception:
-            st.session_state.kb_stats = {"opinions": 0, "learnings": 0, "summaries": 0}
-    return st.session_state.kb_stats
-
-
-def _count_files(directory: Path, pattern: str = "*.json") -> int:
+def count_files(directory: Path) -> int:
     try:
-        return len(list(directory.rglob(pattern)))
+        return len(list(directory.rglob("*.json")))
     except Exception:
         return 0
 
 
-def _render_sources(sources: list):
-    """Render retrieved source cards in an expander."""
-    if not sources:
-        return
-    with st.expander(f"Sources consulted ({len(sources)})", expanded=False):
-        for s in sources:
-            st.markdown(
-                f'<div class="source-card">'
-                f'<strong>{s["title"][:80]}</strong><br>'
-                f'<small>{s["source_name"]} · {s["date"]} · {s["court"][:60]}</small><br>'
-                f'<small>Relevance: {s["score"]:.2f} · Section: {s["section"]}</small>'
-                + (f'<br><a href="{s["url"]}" target="_blank">View original</a>' if s.get("url") else "")
-                + '</div>',
-                unsafe_allow_html=True,
-            )
+@st.cache_resource(show_spinner="Loading knowledge base...")
+def get_agent():
+    from src.agents.sme_agent import SMEAgent
+    return SMEAgent()
 
 
-# ════════════════════════════════════════════════════════
-# PAGE: HOME
-# ════════════════════════════════════════════════════════
-def page_home():
-    st.markdown(f'<div class="main-header">AI {DOMAIN.title()} Subject Matter Expert</div>', unsafe_allow_html=True)
+@st.cache_resource(show_spinner="Loading vector store...")
+def get_store():
+    from src.rag.vector_store import VectorStore
+    return VectorStore()
+
+
+def run_script(cmd: list) -> tuple[str, int]:
+    """Run a Python script and stream output."""
+    result = subprocess.run(
+        [sys.executable] + cmd,
+        capture_output=True, text=True, cwd=ROOT,
+    )
+    return result.stdout + result.stderr, result.returncode
+
+
+# ── Sidebar ───────────────────────────────────────────────
+with st.sidebar:
+    st.markdown(f"### 🧠 AI SME")
+    st.markdown(f"**Subject:** {SUBJECT.title()}")
+    st.markdown("---")
+
+    page = st.radio(
+        "Navigate",
+        ["Home", "Chat", "Explore", "Data Pipeline", "Dataset", "HuggingFace", "About"],
+        label_visibility="collapsed",
+    )
+
+    st.markdown("---")
+    raw_count = count_files(RAW_DATA_DIR)
+    proc_count = count_files(PROCESSED_DATA_DIR)
+    st.caption(f"Raw docs: {raw_count:,}")
+    st.caption(f"Processed: {proc_count:,}")
+
+    llm_active = (
+        "Anthropic" if ANTHROPIC_API_KEY else
+        "Google" if GOOGLE_API_KEY else
+        "OpenAI" if OPENAI_API_KEY else
+        "None configured"
+    )
+    st.caption(f"LLM: {llm_active}")
+
+
+# ══════════════════════════════════════════════════════════
+# PAGE 1 — HOME
+# ══════════════════════════════════════════════════════════
+if page == "Home":
+    st.markdown(f'<div class="main-header">AI Subject Matter Expert</div>', unsafe_allow_html=True)
     st.markdown(
-        f'<div class="sub-header">Conversational AI trained on public court cases · {DOMAIN_DESCRIPTION.title()}</div>',
+        f'<div class="sub-header">{SUBJECT_DESCRIPTION}</div>',
         unsafe_allow_html=True,
     )
 
-    # ── Stats row ──────────────────────────────────────
-    kb_stats = _get_kb_stats()
-    raw_count = _count_files(RAW_DATA_DIR)
-    processed_count = _count_files(PROCESSED_DATA_DIR)
-    total_chunks = sum(kb_stats.values())
-
+    # Stats row
     col1, col2, col3, col4 = st.columns(4)
-    for col, number, label in [
-        (col1, raw_count, "Scraped Cases"),
-        (col2, processed_count, "Processed Cases"),
-        (col3, total_chunks, "Knowledge Base Chunks"),
-        (col4, kb_stats.get("learnings", 0), "Legal Principles"),
-    ]:
-        with col:
-            st.markdown(
-                f'<div class="stat-card">'
-                f'<div class="stat-number">{number:,}</div>'
-                f'<div class="stat-label">{label}</div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    raw_n = count_files(RAW_DATA_DIR)
+    proc_n = count_files(PROCESSED_DATA_DIR)
 
-    st.markdown("---")
-
-    col_a, col_b = st.columns(2)
-
-    with col_a:
-        st.subheader("What This System Does")
-        st.markdown(f"""
-        This AI Subject Matter Expert was built by collecting thousands of public
-        **{DOMAIN} law** court cases from free, open sources:
-
-        - **CourtListener** — US federal & state court opinions (free API)
-        - **Harvard Caselaw Access** — historical US cases (free API)
-        - **Justia** — US case law & legal guides
-        - **BAILII** — British and Irish legal decisions
-
-        For each case, the system:
-        1. **Scrapes** raw text from the source
-        2. **Cleans** and normalizes the text
-        3. **Removes PII** using Microsoft Presidio + spaCy
-        4. **Structures** it with an LLM (facts, ruling, reasoning, learnings)
-        5. **Indexes** into ChromaDB for semantic search
-        6. **Answers** your questions, citing real cases
-        """)
-
-    with col_b:
-        st.subheader("How to Use")
-        st.markdown("""
-        **1. Ask questions in the Chat tab**
-        The AI retrieves relevant cases and principles from the knowledge base,
-        then generates a grounded, cited answer.
-
-        **2. Explore cases by topic**
-        Browse the knowledge base by practice area or keyword.
-
-        **3. Build/update the knowledge base**
-        Use the Data Pipeline tab to scrape new cases, process them, and rebuild the RAG index.
-
-        **4. Share the dataset**
-        Upload the cleaned, PII-removed dataset to HuggingFace for others to use.
-        """)
-
-    st.markdown("---")
-    st.markdown(
-        '<div class="disclaimer">DISCLAIMER: This tool is for educational and research purposes only. '
-        'It does not constitute legal advice. Always consult a qualified attorney for legal matters.</div>',
-        unsafe_allow_html=True,
-    )
-
-    # ── Quick links ────────────────────────────────────
-    st.markdown("---")
-    st.subheader("Quick Start")
-    st.markdown(f"""
-    ```bash
-    # 1. Set up
-    ./setup.sh
-
-    # 2. Add your API key to .env
-    ANTHROPIC_API_KEY=sk-ant-...
-
-    # 3. Collect data from public sources (start with small batch)
-    python scripts/collect_data.py --max 50
-
-    # 4. Process + clean data
-    python scripts/process_data.py
-
-    # 5. Build the RAG knowledge base
-    python scripts/build_rag.py
-
-    # 6. Launch this app
-    streamlit run src/app.py
-    ```
-    """)
-
-
-# ════════════════════════════════════════════════════════
-# PAGE: CHAT
-# ════════════════════════════════════════════════════════
-def page_chat():
-    st.header(f"Chat with the {DOMAIN.title()} Law Expert")
-    st.markdown(
-        f"Ask any question about {DOMAIN_DESCRIPTION}. "
-        "The AI retrieves real court cases from the knowledge base and cites them in its answer."
-    )
-
-    if not _check_api_keys():
-        st.error("No LLM API key configured. Add ANTHROPIC_API_KEY (or OPENAI/GOOGLE) to your .env file.")
-        return
-
-    # ── Sidebar controls ───────────────────────────────
-    with st.sidebar:
-        st.subheader("Search Settings")
-        k_opinions = st.slider("Case law chunks", min_value=1, max_value=10, value=4)
-        k_learnings = st.slider("Legal principles", min_value=1, max_value=6, value=3)
-
-        if st.button("New conversation", use_container_width=True):
-            if "sme_agent" in st.session_state:
-                st.session_state.sme_agent.reset()
-            st.session_state.chat_messages = []
-            st.rerun()
-
-        st.markdown("---")
-        st.markdown("**Example Questions**")
-        examples = [
-            f"What factors do courts consider for child custody?",
-            f"How is property divided in a divorce?",
-            f"When is alimony (spousal support) awarded?",
-            f"What is the 'best interests of the child' standard?",
-            f"Can a divorce settlement be modified after the fact?",
-            f"What constitutes marital vs. separate property?",
-            f"How do courts handle relocation with children post-divorce?",
-        ]
-        for ex in examples:
-            if st.button(ex[:50] + "..." if len(ex) > 50 else ex, key=f"ex_{hash(ex)}", use_container_width=True):
-                st.session_state["chat_prefill"] = ex
-                st.rerun()
-
-        st.markdown("---")
-        kb_stats = _get_kb_stats()
-        st.caption(f"KB: {sum(kb_stats.values()):,} chunks indexed")
-
-    # ── Load agent ─────────────────────────────────────
     try:
-        agent = _get_agent()
-        agent.k_opinions = k_opinions
-        agent.k_learnings = k_learnings
-    except Exception as e:
-        st.error(f"Failed to load agent: {e}")
-        return
+        store = get_store()
+        stats = store.stats()
+        kb_total = sum(stats.values())
+    except Exception:
+        stats = {}
+        kb_total = 0
 
-    if not agent._kb_ready:
-        st.warning(
-            "The knowledge base is empty. Run `python scripts/build_rag.py` to populate it. "
-            "The agent will still answer from its training data but won't cite specific cases."
+    with col1:
+        st.markdown(
+            f'<div class="stat-card"><div class="stat-number">{raw_n}</div>'
+            f'<div class="stat-label">Raw Documents</div></div>',
+            unsafe_allow_html=True,
+        )
+    with col2:
+        st.markdown(
+            f'<div class="stat-card"><div class="stat-number">{proc_n}</div>'
+            f'<div class="stat-label">Processed</div></div>',
+            unsafe_allow_html=True,
+        )
+    with col3:
+        st.markdown(
+            f'<div class="stat-card"><div class="stat-number">{kb_total:,}</div>'
+            f'<div class="stat-label">Knowledge Base Chunks</div></div>',
+            unsafe_allow_html=True,
+        )
+    with col4:
+        status = "Ready" if kb_total > 0 else "Empty"
+        color = "#16a34a" if kb_total > 0 else "#dc2626"
+        st.markdown(
+            f'<div class="stat-card"><div class="stat-number" style="color:{color}">{status}</div>'
+            f'<div class="stat-label">Knowledge Base</div></div>',
+            unsafe_allow_html=True,
         )
 
-    # ── Chat history ───────────────────────────────────
-    for msg in st.session_state.get("chat_messages", []):
+    st.markdown("---")
+    st.subheader("How it works")
+    cols = st.columns(4)
+    steps = [
+        ("1. Research", "AI generates smart queries, searches the web and Wikipedia for your subject"),
+        ("2. Process", "Clean text, remove PII, extract structured knowledge with LLM"),
+        ("3. Build RAG", "Index into ChromaDB vector store (3 collections)"),
+        ("4. Chat", "Ask questions — get grounded answers with sources"),
+    ]
+    for col, (title, desc) in zip(cols, steps):
+        with col:
+            st.markdown(f'<div class="step-box"><strong>{title}</strong><br/>{desc}</div>', unsafe_allow_html=True)
+
+    if stats:
+        st.markdown("---")
+        st.subheader("Knowledge Base Collections")
+        cols = st.columns(3)
+        for col, (name, count) in zip(cols, stats.items()):
+            with col:
+                st.metric(name.title(), f"{count:,} chunks")
+
+    st.markdown("---")
+    st.subheader("Subject Keywords")
+    st.write(" • ".join(SUBJECT_KEYWORDS))
+
+
+# ══════════════════════════════════════════════════════════
+# PAGE 2 — CHAT
+# ══════════════════════════════════════════════════════════
+elif page == "Chat":
+    st.title(f"Chat with your {SUBJECT.title()} Expert")
+
+    if not (ANTHROPIC_API_KEY or OPENAI_API_KEY or GOOGLE_API_KEY):
+        st.error("No LLM API key configured. Add ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY to .env")
+        st.stop()
+
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "agent" not in st.session_state:
+        st.session_state.agent = None
+
+    # Agent init
+    if st.session_state.agent is None:
+        with st.spinner("Loading agent..."):
+            try:
+                from src.agents.sme_agent import SMEAgent
+                st.session_state.agent = SMEAgent()
+                if not st.session_state.agent.is_ready() if hasattr(st.session_state.agent, 'is_ready') else not st.session_state.agent._kb_ready:
+                    st.info(
+                        "Knowledge base is empty — agent will use general knowledge only. "
+                        "Go to **Data Pipeline** to build it."
+                    )
+            except Exception as e:
+                st.error(f"Failed to load agent: {e}")
+                st.stop()
+
+    # Chat history
+    for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-            if msg["role"] == "assistant" and msg.get("sources"):
-                _render_sources(msg["sources"])
+            if msg.get("sources"):
+                with st.expander(f"Sources ({len(msg['sources'])})"):
+                    for src in msg["sources"]:
+                        url = src.get("url", "")
+                        title = src.get("title", "Unknown")
+                        link = f"[{title}]({url})" if url else title
+                        st.markdown(
+                            f'<div class="source-card">'
+                            f'<strong>{link}</strong><br/>'
+                            f'From: {src.get("source_name","")} | '
+                            f'Score: {src.get("score", 0):.3f}'
+                            f'</div>',
+                            unsafe_allow_html=True,
+                        )
 
-    # ── Input ──────────────────────────────────────────
-    prefill = st.session_state.pop("chat_prefill", "")
-    user_input = st.chat_input(f"Ask about {DOMAIN} law...") or prefill
-
-    if user_input:
-        # Show user message
-        st.session_state.chat_messages.append({"role": "user", "content": user_input, "sources": []})
+    # Input
+    if prompt := st.chat_input(f"Ask anything about {SUBJECT}..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
-            st.markdown(user_input)
+            st.markdown(prompt)
 
-        # Generate answer
         with st.chat_message("assistant"):
-            with st.spinner("Searching case law and generating answer..."):
+            with st.spinner("Thinking..."):
                 try:
-                    answer, sources = agent.chat_with_sources(user_input)
+                    answer, sources = st.session_state.agent.chat_with_sources(prompt)
                     st.markdown(answer)
-                    _render_sources(sources)
-                    st.session_state.chat_messages.append({
-                        "role": "assistant",
-                        "content": answer,
-                        "sources": sources,
+                    if sources:
+                        with st.expander(f"Sources ({len(sources)})"):
+                            for src in sources:
+                                url = src.get("url", "")
+                                title = src.get("title", "Unknown")
+                                link = f"[{title}]({url})" if url else title
+                                st.markdown(
+                                    f'<div class="source-card">'
+                                    f'<strong>{link}</strong><br/>'
+                                    f'From: {src.get("source_name","")} | '
+                                    f'Score: {src.get("score", 0):.3f}'
+                                    f'</div>',
+                                    unsafe_allow_html=True,
+                                )
+                    st.session_state.messages.append({
+                        "role": "assistant", "content": answer, "sources": sources
                     })
                 except Exception as e:
-                    err = f"Error generating answer: {e}"
-                    st.error(err)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": err, "sources": []})
+                    st.error(f"Error: {e}")
+
+    if st.button("Clear conversation"):
+        st.session_state.messages = []
+        if st.session_state.agent:
+            st.session_state.agent.reset()
+        st.rerun()
 
 
-# ════════════════════════════════════════════════════════
-# PAGE: EXPLORE
-# ════════════════════════════════════════════════════════
-def page_explore():
-    st.header("Explore the Knowledge Base")
-    st.markdown("Browse cases by topic, practice area, or keyword.")
+# ══════════════════════════════════════════════════════════
+# PAGE 3 — EXPLORE
+# ══════════════════════════════════════════════════════════
+elif page == "Explore":
+    st.title("Explore the Knowledge Base")
 
-    kb_stats = _get_kb_stats()
-    if sum(kb_stats.values()) == 0:
-        st.warning("Knowledge base is empty. Run `python scripts/build_rag.py` first.")
-        return
+    try:
+        store = get_store()
+        stats = store.stats()
+        total = sum(stats.values())
+    except Exception as e:
+        st.error(f"Could not load vector store: {e}")
+        st.stop()
 
-    # Stats
+    if total == 0:
+        st.warning("Knowledge base is empty. Go to **Data Pipeline** to build it.")
+        st.stop()
+
+    st.subheader("Search")
+    query = st.text_input("Search query", placeholder=f"Enter a topic related to {SUBJECT}...")
     col1, col2, col3 = st.columns(3)
-    col1.metric("Opinion Chunks", kb_stats.get("opinions", 0))
-    col2.metric("Legal Principles", kb_stats.get("learnings", 0))
-    col3.metric("Case Summaries", kb_stats.get("summaries", 0))
+    with col1:
+        k_docs = st.slider("Document chunks", 1, 20, 5)
+    with col2:
+        collection = st.selectbox("Collection", ["documents", "learnings", "summaries"])
+
+    if query:
+        with st.spinner("Searching..."):
+            results = store.search_with_score(query, k=k_docs, collection=collection)
+
+        st.markdown(f"**{len(results)} results** in `{collection}`")
+        for doc, score in results:
+            meta = doc.metadata
+            url = meta.get("url", "")
+            title = meta.get("title", "Unknown")
+            with st.expander(f"{title} (score: {score:.3f})"):
+                if url:
+                    st.markdown(f"[{meta.get('source_name', url)}]({url})")
+                st.caption(f"Date: {meta.get('date', 'N/A')} | Topics: {meta.get('topics', '')}")
+                st.text(doc.page_content[:800])
 
     st.markdown("---")
-
-    col_search, col_n = st.columns([3, 1])
-    with col_search:
-        search_query = st.text_input("Search topic", placeholder="e.g. child custody relocation")
-    with col_n:
-        n_results = st.number_input("Results", min_value=3, max_value=30, value=10)
-
-    # Practice area quick filters
-    st.markdown("**Quick filters:**")
-    practice_areas = [
-        "All", "custody", "alimony", "property division", "child support",
-        "spousal support", "modification", "enforcement", "domestic violence",
-    ]
-    cols = st.columns(len(practice_areas))
-    selected_area = None
-    for i, area in enumerate(practice_areas):
-        if cols[i].button(area.title(), key=f"pa_{area}", use_container_width=True):
-            search_query = area if area != "All" else ""
-            selected_area = area if area != "All" else None
-
-    if search_query:
-        try:
-            from src.rag.retriever import Retriever
-            retriever = Retriever()
-            results = retriever.retrieve_for_topic(search_query, n_results=n_results)
-
-            if not results:
-                st.info("No results found. Try a different search term.")
-            else:
-                st.markdown(f"**{len(results)} results for '{search_query}':**")
-                for r in results:
-                    with st.expander(f"{r['title'][:80]} — {r['source_name']}", expanded=False):
-                        cols = st.columns([2, 1, 1])
-                        cols[0].markdown(f"**Court:** {r['court'][:60]}")
-                        cols[1].markdown(f"**Date:** {r['date']}")
-                        cols[2].markdown(f"**Relevance:** {r['score']:.2f}")
-                        if r.get("practice_areas"):
-                            st.markdown(f"**Practice areas:** {r['practice_areas']}")
-                        if r.get("url"):
-                            st.markdown(f"[View original case]({r['url']})")
-        except Exception as e:
-            st.error(f"Search failed: {e}")
+    st.subheader("Collection Statistics")
+    cols = st.columns(3)
+    for col, (name, count) in zip(cols, stats.items()):
+        with col:
+            st.metric(name.title(), f"{count:,} chunks")
 
 
-# ════════════════════════════════════════════════════════
-# PAGE: DATA PIPELINE
-# ════════════════════════════════════════════════════════
-def page_data_pipeline():
-    st.header("Data Pipeline")
-    st.markdown(
-        "Collect cases from public sources, process them, and build the knowledge base. "
-        "Each step can be run independently."
-    )
+# ══════════════════════════════════════════════════════════
+# PAGE 4 — DATA PIPELINE
+# ══════════════════════════════════════════════════════════
+elif page == "Data Pipeline":
+    st.title("Data Pipeline")
+    st.markdown(f"Build the knowledge base for **{SUBJECT}** from public internet sources.")
 
-    # ── Current status ─────────────────────────────────
-    st.subheader("Current Status")
+    # Status
+    raw_n = count_files(RAW_DATA_DIR)
+    proc_n = count_files(PROCESSED_DATA_DIR)
+    try:
+        store = get_store()
+        kb_stats = store.stats()
+        kb_total = sum(kb_stats.values())
+    except Exception:
+        kb_stats = {}
+        kb_total = 0
+
     col1, col2, col3 = st.columns(3)
-    raw_count = _count_files(RAW_DATA_DIR)
-    processed_count = _count_files(PROCESSED_DATA_DIR)
-    kb_stats = _get_kb_stats()
-
-    col1.metric("Raw Cases Scraped", raw_count, help=str(RAW_DATA_DIR))
-    col2.metric("Cases Processed", processed_count, help=str(PROCESSED_DATA_DIR))
-    col3.metric("KB Chunks", sum(kb_stats.values()), help=str(VECTOR_DB_DIR))
+    with col1:
+        st.metric("Raw Documents", raw_n)
+    with col2:
+        st.metric("Processed", proc_n)
+    with col3:
+        st.metric("KB Chunks", kb_total)
 
     st.markdown("---")
 
-    # ── Step 1: Collect ────────────────────────────────
-    with st.expander("Step 1: Collect Data from Public Sources", expanded=True):
-        st.markdown("""
-        Scrapes publicly available court cases from:
-        - **CourtListener** (US court opinions — free REST API)
-        - **Harvard Caselaw Access** (US historical cases — free API)
-        - **Justia** (US case law — HTML scraping)
-        - **BAILII** (British & Irish cases — HTML scraping)
-        """)
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            max_cases = st.number_input("Max cases per source", min_value=5, max_value=1000, value=50)
-        with col2:
-            sources = st.multiselect(
-                "Sources to scrape",
-                ["CourtListener", "CaseLaw Access", "Justia/BAILII"],
-                default=["CourtListener"],
-            )
-        with col3:
-            st.markdown("<br>", unsafe_allow_html=True)
-            run_collect = st.button("Run Scraper", type="primary", use_container_width=True)
-
-        if run_collect:
-            with st.spinner("Scraping public sources... (this may take several minutes)"):
-                try:
-                    import subprocess
-                    source_flags = []
-                    if "CourtListener" in sources:
-                        source_flags.append("--courtlistener")
-                    if "CaseLaw Access" in sources:
-                        source_flags.append("--caselaw")
-                    if "Justia/BAILII" in sources:
-                        source_flags.append("--web")
-
-                    cmd = [
-                        sys.executable,
-                        str(ROOT / "scripts" / "collect_data.py"),
-                        "--max", str(max_cases),
-                    ] + source_flags
-
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                    if result.returncode == 0:
-                        st.success("Scraping complete!")
-                        st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
-                    else:
-                        st.error("Scraping failed.")
-                        st.code(result.stderr[-2000:])
-                    # Clear cached stats
-                    st.session_state.pop("kb_stats", None)
-                except Exception as e:
-                    st.error(f"Failed to run scraper: {e}")
-
-    # ── Step 2: Process ────────────────────────────────
-    with st.expander("Step 2: Process & Clean Data", expanded=False):
-        st.markdown("""
-        For each scraped case:
-        1. **Clean text** — remove boilerplate, normalize whitespace
-        2. **Remove PII** — anonymize personal names, phone numbers, emails, SSNs
-        3. **Structure** — LLM extracts facts, ruling, reasoning, and learnings
-        4. **Save** — write cleaned JSON to `data/processed/`
-
-        *Note: Structuring with an LLM uses API credits (approx. $0.001-0.005 per case with Claude Haiku).*
-        """)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            skip_structured = st.checkbox("Skip already-processed cases", value=True)
-            limit = st.number_input("Process at most N cases (0 = all)", min_value=0, value=100)
-        with col2:
-            use_cheap_model = st.checkbox("Use fast/cheap model for structuring", value=True,
-                                          help="Claude Haiku / GPT-4o-mini instead of full model")
-            st.markdown("<br>", unsafe_allow_html=True)
-            run_process = st.button("Process Data", type="primary", use_container_width=True)
-
-        if run_process:
-            with st.spinner("Processing cases... (this calls the LLM for each case)"):
-                try:
-                    import subprocess
-                    cmd = [
-                        sys.executable,
-                        str(ROOT / "scripts" / "process_data.py"),
-                    ]
-                    if limit > 0:
-                        cmd.extend(["--limit", str(limit)])
-                    if skip_structured:
-                        cmd.append("--skip-structured")
-                    if use_cheap_model:
-                        cmd.append("--fast-model")
-
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                    if result.returncode == 0:
-                        st.success("Processing complete!")
-                        st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
-                    else:
-                        st.error("Processing failed.")
-                        st.code(result.stderr[-2000:])
-                    st.session_state.pop("kb_stats", None)
-                except Exception as e:
-                    st.error(f"Failed to run processor: {e}")
-
-    # ── Step 3: Build RAG ──────────────────────────────
-    with st.expander("Step 3: Build Knowledge Base (RAG Index)", expanded=False):
-        st.markdown("""
-        Indexes all processed cases into ChromaDB vector collections:
-        - `opinions` — case facts, reasoning, rulings (chunked)
-        - `learnings` — distilled legal principles
-        - `summaries` — concise case overviews
-        """)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            force_rebuild = st.checkbox("Force rebuild (delete existing index)", value=False)
-        with col2:
-            run_rag = st.button("Build Knowledge Base", type="primary", use_container_width=True)
-
-        if run_rag:
-            with st.spinner("Building knowledge base... (may take a few minutes for large datasets)"):
-                try:
-                    import subprocess
-                    cmd = [sys.executable, str(ROOT / "scripts" / "build_rag.py")]
-                    if force_rebuild:
-                        cmd.append("--rebuild")
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                    if result.returncode == 0:
-                        st.success("Knowledge base built!")
-                        st.code(result.stdout[-2000:] if len(result.stdout) > 2000 else result.stdout)
-                    else:
-                        st.error("Build failed.")
-                        st.code(result.stderr[-2000:])
-                    st.session_state.pop("kb_stats", None)
-                    st.session_state.pop("sme_agent", None)  # Force agent reload
-                except Exception as e:
-                    st.error(f"Failed to build RAG: {e}")
-
-
-# ════════════════════════════════════════════════════════
-# PAGE: DATASET VIEWER
-# ════════════════════════════════════════════════════════
-def page_dataset():
-    st.header("Dataset Viewer")
-    st.markdown("Browse and download the processed, PII-cleaned case dataset.")
-
-    processed_count = _count_files(PROCESSED_DATA_DIR)
-    if processed_count == 0:
-        st.warning("No processed cases found. Run the Data Pipeline first.")
-        return
-
-    st.info(f"Found **{processed_count}** processed cases in `{PROCESSED_DATA_DIR}`")
-
-    # Load cases
-    if st.button("Load Dataset", type="primary"):
-        import json
-        cases = []
-        for path in sorted(PROCESSED_DATA_DIR.rglob("*.json"))[:500]:  # Limit for display
-            try:
-                cases.append(json.loads(path.read_text()))
-            except Exception:
-                pass
-
-        if cases:
-            import pandas as pd
-            rows = []
-            for c in cases:
-                rows.append({
-                    "ID": c.get("source_id", ""),
-                    "Title": c.get("title", "")[:60],
-                    "Source": c.get("source_name", ""),
-                    "Date": c.get("date", ""),
-                    "Court": c.get("court", "")[:40],
-                    "Practice Areas": ", ".join(c.get("practice_areas", [])),
-                    "Structured": "Yes" if c.get("structured") else "No",
-                    "Text Length": len(c.get("text", "")),
-                })
-
-            df = pd.DataFrame(rows)
-            st.dataframe(df, use_container_width=True)
-
-            # Download
-            import io
-            jsonl = "\n".join(
-                json.dumps(c, ensure_ascii=False) for c in cases
-            )
-            st.download_button(
-                "Download Dataset (JSONL)",
-                data=jsonl.encode("utf-8"),
-                file_name=f"{DOMAIN}_cases_dataset.jsonl",
-                mime="application/jsonlines",
-            )
-
-            # Sample case viewer
-            st.markdown("---")
-            st.subheader("View a Case")
-            case_ids = [c.get("source_id", f"case_{i}") for i, c in enumerate(cases)]
-            selected = st.selectbox("Select case", case_ids)
-            case = next((c for c in cases if c.get("source_id") == selected), None)
-            if case:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown(f"**Title:** {case.get('title', '')}")
-                    st.markdown(f"**Source:** {case.get('source_name', '')}")
-                    st.markdown(f"**Date:** {case.get('date', '')}")
-                    st.markdown(f"**Court:** {case.get('court', '')}")
-                with col2:
-                    st.markdown(f"**URL:** {case.get('url', '')}")
-                    st.markdown(f"**Practice Areas:** {', '.join(case.get('practice_areas', []))}")
-                    st.markdown(f"**Structured:** {case.get('structured', False)}")
-
-                if case.get("summary"):
-                    st.markdown("**Summary:**")
-                    st.info(case["summary"])
-                if case.get("facts"):
-                    with st.expander("Facts"):
-                        st.write(case["facts"])
-                if case.get("ruling"):
-                    with st.expander("Ruling"):
-                        st.write(case["ruling"])
-                if case.get("learnings"):
-                    with st.expander("Learnings / Legal Principles"):
-                        st.write(case["learnings"])
-
-
-# ════════════════════════════════════════════════════════
-# PAGE: HUGGINGFACE UPLOAD
-# ════════════════════════════════════════════════════════
-def page_huggingface():
-    st.header("Upload Dataset to HuggingFace")
+    # Step 1: Research
+    st.subheader("Step 1 — Research")
     st.markdown(
-        "Upload the processed, PII-cleaned dataset to HuggingFace Hub "
-        "so others can use it for research and fine-tuning."
+        "AI generates search queries → searches the web and Wikipedia → fetches and saves pages."
     )
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        max_docs = st.number_input("Max docs per source", 10, 1000, 100, step=10)
+    with col2:
+        n_queries = st.number_input("AI search queries", 5, 30, 10)
+    with col3:
+        research_source = st.selectbox("Source", ["All", "Web (AI)", "Wikipedia"])
 
-    # Status check
-    hf_token = HF_TOKEN or os.getenv("HF_TOKEN", "")
-    if not hf_token:
-        st.warning(
-            "No HuggingFace token found. Add `HF_TOKEN=hf_...` to your `.env` file. "
-            "Get a token at https://huggingface.co/settings/tokens"
-        )
-    else:
-        st.success(f"HF token configured (ends in ...{hf_token[-4:]})")
+    if st.button("Run Research", type="primary"):
+        cmd = ["scripts/research.py", "--max", str(max_docs), "--queries", str(n_queries)]
+        if research_source == "Web (AI)":
+            cmd.append("--web")
+        elif research_source == "Wikipedia":
+            cmd.append("--wikipedia")
 
-    processed_count = _count_files(PROCESSED_DATA_DIR)
-    st.metric("Cases ready to upload", processed_count)
-
-    if processed_count == 0:
-        st.warning("No processed cases found. Complete the Data Pipeline first.")
-        return
+        with st.spinner("Researching..."):
+            output, code = run_script(cmd)
+        if code == 0:
+            st.success("Research complete!")
+        else:
+            st.error("Research failed (see output)")
+        st.code(output)
+        st.rerun()
 
     st.markdown("---")
-    st.subheader("Upload Configuration")
 
-    repo_id = st.text_input(
-        "HuggingFace Repository ID",
-        value=HF_REPO_ID or "your-username/divorce-cases-en",
-        help="Format: username/dataset-name"
-    )
-
+    # Step 2: Process
+    st.subheader("Step 2 — Process")
+    st.markdown("Clean text, remove PII, extract structured knowledge with LLM.")
     col1, col2 = st.columns(2)
     with col1:
-        make_private = st.checkbox("Make dataset private", value=False)
-        include_full_text = st.checkbox("Include full text field", value=True)
+        proc_limit = st.number_input("Limit (0 = all)", 0, 10000, 0, step=10)
     with col2:
-        dataset_description = st.text_area(
-            "Dataset description",
-            value=f"Public {DOMAIN} law court cases collected from CourtListener, Harvard Caselaw Access, Justia, and BAILII. PII-anonymized. Includes structured fields: facts, ruling, reasoning, learnings.",
-            height=100,
-        )
+        use_fast_model = st.checkbox("Use fast model (cheaper)")
+    skip_struct = st.checkbox("Skip already-structured documents")
+    no_struct = st.checkbox("Skip LLM structuring (clean + PII only, much faster)")
 
-    if st.button("Upload to HuggingFace", type="primary", disabled=not hf_token):
-        if not repo_id or "/" not in repo_id:
-            st.error("Please provide a valid repository ID in format 'username/dataset-name'")
-            return
+    if st.button("Run Processing", type="primary"):
+        cmd = ["scripts/process_data.py"]
+        if proc_limit > 0:
+            cmd += ["--limit", str(proc_limit)]
+        if use_fast_model:
+            cmd.append("--fast-model")
+        if skip_struct:
+            cmd.append("--skip-structured")
+        if no_struct:
+            cmd.append("--no-structure")
 
-        with st.spinner("Uploading to HuggingFace... (this may take several minutes for large datasets)"):
-            try:
-                import subprocess
-                cmd = [
-                    sys.executable,
-                    str(ROOT / "scripts" / "upload_to_hf.py"),
-                    "--repo-id", repo_id,
-                    "--description", dataset_description,
-                ]
-                if make_private:
-                    cmd.append("--private")
-                if not include_full_text:
-                    cmd.append("--no-full-text")
-
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                if result.returncode == 0:
-                    st.success(f"Dataset uploaded!")
-                    st.markdown(f"View at: https://huggingface.co/datasets/{repo_id}")
-                    st.code(result.stdout)
-                else:
-                    st.error("Upload failed.")
-                    st.code(result.stderr[-3000:])
-            except Exception as e:
-                st.error(f"Upload failed: {e}")
+        with st.spinner("Processing..."):
+            output, code = run_script(cmd)
+        if code == 0:
+            st.success("Processing complete!")
+        else:
+            st.error("Processing failed (see output)")
+        st.code(output)
+        st.rerun()
 
     st.markdown("---")
-    st.subheader("Use the Uploaded Dataset")
-    st.code(f"""from datasets import load_dataset
 
-ds = load_dataset("{repo_id or 'your-username/divorce-cases-en'}", split="train")
-print(ds)
-# Dataset({{
-#   features: ['source_id','title','source_name','url','date','court',
-#              'text','facts','ruling','reasoning','learnings','summary','practice_areas'],
-#   num_rows: {processed_count}
-# }})
-""")
+    # Step 3: Build RAG
+    st.subheader("Step 3 — Build Knowledge Base")
+    st.markdown("Index processed documents into ChromaDB for semantic search.")
+    rebuild = st.checkbox("Force full rebuild (delete existing index)")
 
+    if st.button("Build Knowledge Base", type="primary"):
+        cmd = ["scripts/build_rag.py"]
+        if rebuild:
+            cmd.append("--rebuild")
 
-# ════════════════════════════════════════════════════════
-# PAGE: ABOUT
-# ════════════════════════════════════════════════════════
-def page_about():
-    st.header("About This System")
-
-    st.markdown(f"""
-    ## Architecture
-
-    This system follows a four-stage pipeline to build a Subject Matter Expert AI:
-
-    ```
-    Public Sources          Data Pipeline               AI Agent
-    ─────────────          ─────────────               ────────
-    CourtListener  ──►  Scrape & Clean  ──►  Structure  ──►  SME Agent
-    Harvard CAP    ──►  Remove PII      ──►  Index      ──►  (RAG + LLM)
-    Justia         ──►  Normalize       ──►  ChromaDB   ──►  Streamlit UI
-    BAILII         ──►  Save JSON       ──►  HF Dataset ──►  CLI Chat
-    ```
-
-    ## Tech Stack
-
-    | Component | Technology |
-    |---|---|
-    | LLM | Claude (Anthropic) / GPT-4 (OpenAI) / Gemini (Google) |
-    | RAG | ChromaDB + sentence-transformers |
-    | Embeddings | `paraphrase-multilingual-MiniLM-L12-v2` (free, no API needed) |
-    | PII Removal | Microsoft Presidio + spaCy en_core_web_lg |
-    | Web Scraping | requests + BeautifulSoup + Playwright |
-    | Case Structuring | LLM (Claude Haiku / GPT-4o-mini) |
-    | Dataset Hosting | HuggingFace Hub |
-    | UI | Streamlit |
-
-    ## Data Sources
-
-    | Source | Coverage | Access |
-    |---|---|---|
-    | [CourtListener](https://www.courtlistener.com) | US federal & state courts | Free API |
-    | [Harvard Caselaw Access](https://case.law) | US cases 1658-present | Free API (registration for full text) |
-    | [Justia](https://law.justia.com) | US case law + guides | Free (HTML) |
-    | [BAILII](https://www.bailii.org) | British & Irish cases | Free (HTML) |
-
-    ## Privacy & Ethics
-
-    - All personal names are replaced with `[PERSON_N]` placeholders using NER
-    - Phone numbers, SSNs, emails replaced with typed placeholders
-    - Court/party names in case titles are preserved (public record)
-    - Only public domain documents are scraped
-    - Respect for `robots.txt` and rate limits
-
-    ## Legal Disclaimer
-
-    This tool is for **educational and research purposes only**.
-    It does not constitute legal advice.
-    Always consult a qualified attorney for legal matters.
-    The accuracy of AI-generated summaries and analysis is not guaranteed.
-
-    ## Author
-
-    **Albert García Díaz**
-    - GitHub: [@albertgd](https://github.com/albertgd)
-    - Related project: [legal-companion](https://github.com/albertgd/legal-companion)
-    """)
+        with st.spinner("Building..."):
+            output, code = run_script(cmd)
+        if code == 0:
+            st.success("Knowledge base built!")
+        else:
+            st.error("Build failed (see output)")
+        st.code(output)
+        st.cache_resource.clear()
+        st.rerun()
 
 
-# ════════════════════════════════════════════════════════
-# MAIN
-# ════════════════════════════════════════════════════════
-def main():
-    with st.sidebar:
-        st.markdown(f"### AI {DOMAIN.title()} SME")
-        st.markdown("---")
+# ══════════════════════════════════════════════════════════
+# PAGE 5 — DATASET
+# ══════════════════════════════════════════════════════════
+elif page == "Dataset":
+    st.title("Dataset Viewer")
 
-        pages = {
-            "Home": page_home,
-            "Chat": page_chat,
-            "Explore Cases": page_explore,
-            "Data Pipeline": page_data_pipeline,
-            "Dataset Viewer": page_dataset,
-            "Upload to HuggingFace": page_huggingface,
-            "About": page_about,
-        }
+    docs = []
+    for path in sorted(PROCESSED_DATA_DIR.rglob("*.json")):
+        try:
+            docs.append(json.loads(path.read_text(encoding="utf-8")))
+        except Exception:
+            pass
 
-        icons = {
-            "Home": "🏠",
-            "Chat": "💬",
-            "Explore Cases": "🔍",
-            "Data Pipeline": "⚙️",
-            "Dataset Viewer": "📊",
-            "Upload to HuggingFace": "🤗",
-            "About": "ℹ️",
-        }
+    if not docs:
+        st.warning("No processed documents yet. Run the Data Pipeline first.")
+        st.stop()
 
-        selection = st.radio(
-            "Navigation",
-            list(pages.keys()),
-            format_func=lambda x: f"{icons[x]} {x}",
+    st.metric("Total Documents", len(docs))
+
+    # Search filter
+    search = st.text_input("Filter by title or topic", "")
+    if search:
+        docs = [
+            d for d in docs
+            if search.lower() in d.get("title", "").lower()
+            or search.lower() in ",".join(d.get("topics", [])).lower()
+        ]
+        st.caption(f"{len(docs)} matching documents")
+
+    # Table view
+    rows = []
+    for d in docs[:200]:
+        rows.append({
+            "Title": d.get("title", "")[:80],
+            "Source": d.get("source_name", ""),
+            "Date": d.get("date", ""),
+            "Topics": ", ".join(d.get("topics", [])),
+            "Structured": "Yes" if d.get("structured") else "No",
+        })
+
+    if rows:
+        import pandas as pd
+        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+    # Detail view
+    st.markdown("---")
+    titles = [d.get("title", d.get("source_id", "?"))[:80] for d in docs[:100]]
+    selected = st.selectbox("View document detail", titles)
+    if selected:
+        doc = next((d for d in docs if d.get("title", "").startswith(selected[:40])), None)
+        if doc:
+            st.subheader(doc.get("title", ""))
+            col1, col2 = st.columns(2)
+            with col1:
+                st.write(f"**Source:** {doc.get('source_name', '')}")
+                st.write(f"**Date:** {doc.get('date', 'N/A')}")
+                st.write(f"**URL:** {doc.get('url', '')}")
+            with col2:
+                st.write(f"**Topics:** {', '.join(doc.get('topics', []))}")
+                st.write(f"**Author:** {doc.get('author', 'N/A')}")
+                st.write(f"**Structured:** {'Yes' if doc.get('structured') else 'No'}")
+
+            if doc.get("summary"):
+                st.markdown("**Summary:**")
+                st.write(doc["summary"])
+            if doc.get("key_points"):
+                st.markdown("**Key Points:**")
+                st.write(doc["key_points"])
+            if doc.get("learnings"):
+                st.markdown("**Learnings:**")
+                st.write(doc["learnings"])
+
+    # Download
+    st.markdown("---")
+    if st.button("Download as JSONL"):
+        jsonl = "\n".join(json.dumps(d, ensure_ascii=False) for d in docs)
+        st.download_button(
+            "Download JSONL",
+            data=jsonl,
+            file_name=f"{SUBJECT.replace(' ', '_')}_dataset.jsonl",
+            mime="application/json",
         )
 
-        st.markdown("---")
 
-        # API key status
-        if _check_api_keys():
-            st.success("LLM API key configured")
+# ══════════════════════════════════════════════════════════
+# PAGE 6 — HUGGINGFACE
+# ══════════════════════════════════════════════════════════
+elif page == "HuggingFace":
+    st.title("Upload to HuggingFace Hub")
+
+    if not HF_TOKEN:
+        st.error(
+            "HF_TOKEN not set in .env. "
+            "Get a token from huggingface.co/settings/tokens"
+        )
+
+    repo_id = st.text_input("Repository ID", value=HF_REPO_ID or f"username/{SUBJECT.replace(' ', '-')}-sme")
+    private = st.checkbox("Private repository", value=False)
+    no_full_text = st.checkbox("Exclude full text (smaller dataset)", value=False)
+
+    proc_n = count_files(PROCESSED_DATA_DIR)
+    st.info(f"{proc_n} processed documents ready to upload.")
+
+    if st.button("Upload to HuggingFace", type="primary", disabled=not HF_TOKEN):
+        cmd = ["scripts/upload_to_hf.py", "--repo-id", repo_id]
+        if private:
+            cmd.append("--private")
+        if no_full_text:
+            cmd.append("--no-full-text")
+
+        with st.spinner("Uploading..."):
+            output, code = run_script(cmd)
+        if code == 0:
+            st.success(f"Uploaded! View at https://huggingface.co/datasets/{repo_id}")
         else:
-            st.error("No LLM API key. Edit .env")
-
-        if HF_TOKEN:
-            st.success("HuggingFace token configured")
-        else:
-            st.warning("No HF token (for upload only)")
-
-        st.markdown("---")
-        st.caption(f"Domain: {DOMAIN}")
-        st.caption("AI Subject Matter Expert v1.0")
-
-    pages[selection]()
+            st.error("Upload failed (see output)")
+        st.code(output)
 
 
-if __name__ == "__main__":
-    main()
+# ══════════════════════════════════════════════════════════
+# PAGE 7 — ABOUT
+# ══════════════════════════════════════════════════════════
+elif page == "About":
+    st.title("About This Project")
+
+    st.markdown(f"""
+## AI Subject Matter Expert
+
+A fully generic system to build a domain-specific AI expert on **any subject** using public internet data.
+
+### Current Subject
+**{SUBJECT.title()}** — {SUBJECT_DESCRIPTION}
+
+### Architecture
+
+| Component | Technology |
+|-----------|-----------|
+| Web Research | DuckDuckGo / Tavily + AI query generation |
+| Wikipedia | wikipedia-api |
+| Text Cleaning | Custom rule-based cleaner |
+| PII Removal | Microsoft Presidio + spaCy |
+| Knowledge Extraction | LLM (Claude / GPT-4 / Gemini) |
+| Vector Store | ChromaDB |
+| Embeddings | sentence-transformers (multilingual) |
+| Agent | LangChain + RAG |
+| UI | Streamlit |
+| Dataset Publishing | HuggingFace Hub |
+
+### Pipeline
+
+```
+Internet  →  AI Researcher  →  Raw Docs
+                                    ↓
+                              TextCleaner
+                                    ↓
+                              PIIRemover
+                                    ↓
+                          ContentStructurer (LLM)
+                                    ↓
+                           ChromaDB (3 collections)
+                                    ↓
+                           SME Agent (RAG + LLM)
+                                    ↓
+                            HuggingFace Dataset
+```
+
+### Changing the Subject
+
+Edit your `.env` file:
+```
+SUBJECT=quantum physics
+SUBJECT_DESCRIPTION=quantum mechanics, quantum computing, and quantum field theory
+SUBJECT_KEYWORDS=quantum,entanglement,superposition,qubit,Schrodinger
+```
+
+Then run the full pipeline again.
+""")

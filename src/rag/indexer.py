@@ -1,5 +1,5 @@
 """
-Indexer — loads processed case files into the vector store.
+Indexer — loads processed document files into the vector store.
 
 Reads processed JSON files from data/processed/ and indexes them
 into ChromaDB collections via VectorStore.
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class Indexer:
     """
-    Loads processed case JSON files and indexes them into ChromaDB.
+    Loads processed document JSON files and indexes them into ChromaDB.
 
     Usage:
         indexer = Indexer()
@@ -36,7 +36,7 @@ class Indexer:
 
     def index_all(self, force_rebuild: bool = False) -> Dict[str, int]:
         """
-        Index all processed cases.
+        Index all processed documents.
 
         Args:
             force_rebuild: If True, delete existing collections and reindex.
@@ -48,70 +48,71 @@ class Indexer:
             logger.info("Force rebuild: deleting existing collections...")
             self.store.reset_all()
 
-        # Check if already indexed
         existing_counts = self.store.stats()
         total_existing = sum(existing_counts.values())
 
         if total_existing > 0 and not force_rebuild:
-            logger.info(f"Found existing index: {existing_counts}. Use force_rebuild=True to rebuild.")
+            logger.info(
+                f"Found existing index: {existing_counts}. Use force_rebuild=True to rebuild."
+            )
             return existing_counts
 
-        cases = self.load_processed_cases()
-        if not cases:
-            logger.warning(f"No processed cases found in {self.processed_dir}.")
+        documents = self.load_processed_documents()
+        if not documents:
+            logger.warning(f"No processed documents found in {self.processed_dir}.")
             return {}
 
-        logger.info(f"Indexing {len(cases)} cases into vector store...")
-        counts = self.store.add_from_cases(cases)
+        logger.info(f"Indexing {len(documents)} documents into vector store...")
+        counts = self.store.add_from_documents(documents)
         logger.info(f"Indexing complete: {counts}")
         return counts
 
     def index_new(self) -> Dict[str, int]:
-        """
-        Index only cases not yet in the store (incremental updates).
-        """
-        cases = self.load_processed_cases()
-        if not cases:
+        """Index only documents not yet in the store (incremental updates)."""
+        documents = self.load_processed_documents()
+        if not documents:
             return {}
 
-        # Get existing source IDs to avoid duplicates
         existing_ids = self._get_indexed_source_ids()
-        new_cases = [c for c in cases if c.get("source_id") not in existing_ids]
+        new_docs = [d for d in documents if d.get("source_id") not in existing_ids]
 
-        if not new_cases:
-            logger.info("No new cases to index.")
+        if not new_docs:
+            logger.info("No new documents to index.")
             return {}
 
-        logger.info(f"Indexing {len(new_cases)} new cases...")
-        return self.store.add_from_cases(new_cases)
+        logger.info(f"Indexing {len(new_docs)} new documents...")
+        return self.store.add_from_documents(new_docs)
 
-    def load_processed_cases(self) -> List[Dict]:
-        """Load all processed case JSON files from disk."""
-        cases = []
-        # Search all subdirectories
+    def load_processed_documents(self) -> List[Dict]:
+        """Load all processed document JSON files from disk."""
+        documents = []
         for path in sorted(self.processed_dir.rglob("*.json")):
             try:
-                case = json.loads(path.read_text(encoding="utf-8"))
-                cases.append(case)
+                documents.append(json.loads(path.read_text(encoding="utf-8")))
             except Exception as e:
                 logger.warning(f"Failed to load {path}: {e}")
 
-        logger.info(f"Loaded {len(cases)} processed cases from {self.processed_dir}")
-        return cases
+        logger.info(f"Loaded {len(documents)} processed documents from {self.processed_dir}")
+        return documents
+
+    # backward-compat alias
+    def load_processed_cases(self) -> List[Dict]:
+        return self.load_processed_documents()
 
     def _get_indexed_source_ids(self) -> set:
-        """Get source_ids already present in the opinions collection."""
+        """Get source_ids already present in the documents collection."""
         try:
-            store = self.store.get_collection("opinions")
+            store = self.store.get_collection("documents")
             result = store._collection.get(include=["metadatas"])
-            return {m.get("source_id") for m in result.get("metadatas", []) if m.get("source_id")}
+            return {
+                m.get("source_id")
+                for m in result.get("metadatas", [])
+                if m.get("source_id")
+            }
         except Exception:
             return set()
 
-    def index_cases_directly(self, cases: List[Dict]) -> Dict[str, int]:
-        """
-        Index a list of case dicts directly (without loading from disk).
-        Useful for pipeline scripts that have cases in memory.
-        """
-        logger.info(f"Indexing {len(cases)} cases directly...")
-        return self.store.add_from_cases(cases)
+    def index_documents_directly(self, documents: List[Dict]) -> Dict[str, int]:
+        """Index a list of document dicts directly (without loading from disk)."""
+        logger.info(f"Indexing {len(documents)} documents directly...")
+        return self.store.add_from_documents(documents)

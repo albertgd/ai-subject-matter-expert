@@ -5,7 +5,7 @@ Tests for SMEAgent — offline tests using mocked LLM and retriever.
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
@@ -18,16 +18,15 @@ class TestSMEAgentOffline:
         """Create an SMEAgent with mocked LLM and retriever."""
         from src.agents.sme_agent import SMEAgent
 
-        # Create agent without calling __init__
         agent = SMEAgent.__new__(SMEAgent)
 
         # Mock LLM
         mock_llm = MagicMock()
         mock_response = MagicMock()
         mock_response.content = (
-            "Based on the retrieved cases, child custody is determined by the "
-            "best interests of the child standard. In Anderson v. Anderson [TestSource], "
-            "the court held that the primary caregiver's role is a key factor."
+            "Based on the retrieved documents, neural networks are computational systems "
+            "inspired by biological brains. According to [Wikipedia — Neural Networks], "
+            "they consist of layers of interconnected nodes."
         )
         mock_llm.invoke.return_value = mock_response
         agent.llm = mock_llm
@@ -36,89 +35,78 @@ class TestSMEAgentOffline:
         mock_retriever = MagicMock()
         mock_retriever.is_ready.return_value = kb_ready
         mock_retriever.retrieve.return_value = (
-            "## LEGAL PRINCIPLES\n\nBest interests of child is paramount.\n",
-            [{"title": "Anderson v. Anderson", "source_name": "TestSource",
-              "score": 0.95, "url": "", "date": "2023-01-01", "court": "CA",
-              "section": "learnings", "practice_areas": "custody"}]
+            "## KEY INSIGHTS\n\nNeural networks learn from data.\n",
+            [{"title": "Neural Networks", "source_name": "Wikipedia",
+              "score": 0.95, "url": "https://en.wikipedia.org/wiki/Neural_network",
+              "date": "2024-01-01", "author": "Wikipedia contributors",
+              "topics": "neural networks,deep learning", "collection": "learnings"}]
         )
-        mock_retriever.knowledge_base_stats.return_value = {"opinions": 5, "learnings": 3}
-        mock_retriever.k_opinions = 4
+        mock_retriever.knowledge_base_stats.return_value = {"documents": 10, "learnings": 5, "summaries": 3}
+        mock_retriever.k_documents = 4
         mock_retriever.k_learnings = 3
         agent.retriever = mock_retriever
 
-        # Initialize conversation history
         from langchain_core.messages import SystemMessage
-        from src.config import DOMAIN, DOMAIN_DESCRIPTION
+        from src.config import SUBJECT, SUBJECT_DESCRIPTION
         from src.agents.sme_agent import _SYSTEM_PROMPT_TEMPLATE
-        system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
-            domain=DOMAIN, domain_description=DOMAIN_DESCRIPTION
-        )
-        agent.history = [SystemMessage(content=system_prompt)]
+        agent.history = [SystemMessage(content=_SYSTEM_PROMPT_TEMPLATE.format(
+            subject=SUBJECT, subject_description=SUBJECT_DESCRIPTION,
+        ))]
         agent._kb_ready = kb_ready
-        agent.k_opinions = 4
+        agent.k_documents = 4
         agent.k_learnings = 3
 
         return agent
 
     def test_basic_chat(self):
         agent = self._make_agent_with_mocks()
-        answer = agent.chat("What factors determine child custody?")
+        answer = agent.chat("What is a neural network?")
         assert isinstance(answer, str)
         assert len(answer) > 20
-        assert "best interests" in answer.lower()
+        assert "neural network" in answer.lower()
 
     def test_chat_with_sources(self):
         agent = self._make_agent_with_mocks()
-        answer, sources = agent.chat_with_sources("How is custody determined?")
+        answer, sources = agent.chat_with_sources("How do neural networks learn?")
         assert isinstance(answer, str)
         assert isinstance(sources, list)
         assert len(sources) > 0
-        assert sources[0]["title"] == "Anderson v. Anderson"
+        assert sources[0]["title"] == "Neural Networks"
 
     def test_reset_clears_history(self):
         agent = self._make_agent_with_mocks()
-        agent.chat("First question about custody")
-        agent.chat("Follow-up about relocation")
-
-        initial_length = len(agent.history)
-        assert initial_length > 1  # System + messages
-
+        agent.chat("First question")
+        agent.chat("Follow-up question")
+        assert len(agent.history) > 1
         agent.reset()
-        # After reset, only system message should remain
         assert len(agent.history) == 1
 
     def test_multi_turn_conversation(self):
         agent = self._make_agent_with_mocks()
-
-        # First turn
-        answer1 = agent.chat("What is joint custody?")
+        answer1 = agent.chat("What is deep learning?")
         assert answer1
-
-        # Second turn (follow-up)
-        answer2 = agent.chat("How does relocation affect that?")
+        answer2 = agent.chat("How does it differ from machine learning?")
         assert answer2
-
-        # History should have: system + 2 human + 2 ai = 5 messages
+        # system + 2 human + 2 ai = 5
         assert len(agent.history) == 5
 
     def test_empty_kb_mode(self):
         """Agent should still work even if KB is empty."""
         agent = self._make_agent_with_mocks(kb_ready=False)
-        # Should not raise even with empty KB
-        answer = agent.chat("Tell me about divorce law")
+        answer = agent.chat("Tell me about transformers")
         assert isinstance(answer, str)
 
     def test_kb_stats(self):
         agent = self._make_agent_with_mocks()
         stats = agent.kb_stats
         assert isinstance(stats, dict)
-        assert "opinions" in stats
+        assert "documents" in stats
 
     def test_build_augmented_message(self):
         from src.agents.sme_agent import SMEAgent
-        question = "How is property divided?"
-        context = "## CASE LAW\n\nIn Brown v. Brown, the court applied equitable distribution."
+        question = "What is backpropagation?"
+        context = "## KEY INSIGHTS\n\nBackpropagation uses the chain rule."
         message = SMEAgent._build_augmented_message(question, context)
-        assert "How is property divided?" in message
+        assert "What is backpropagation?" in message
         assert "RETRIEVED DOCUMENTS" in message
-        assert "Brown v. Brown" in message
+        assert "chain rule" in message

@@ -1,5 +1,5 @@
 """
-PII Remover — Anonymize personally identifiable information from legal texts.
+PII Remover — Anonymize personally identifiable information from web content.
 
 Uses:
   - Microsoft Presidio (https://github.com/microsoft/presidio) — NER-based PII detection
@@ -16,7 +16,7 @@ Replaced entity types:
   - US_DRIVER_LICENSE → [DRIVER_LICENSE]
   - US_PASSPORT  → [PASSPORT]
 
-Court/party names in legal documents are intentionally preserved as
+Public figures and organization names are intentionally preserved as
 they are matters of public record. Only private individual identifying
 information is anonymized.
 """
@@ -111,14 +111,18 @@ class PIIRemover:
 
         return text
 
-    def anonymize_case(self, case: dict) -> dict:
-        """Anonymize PII in all text fields of a case dict."""
-        case = dict(case)
-        text_fields = ["text", "summary", "facts", "ruling", "reasoning", "learnings"]
+    def anonymize_document(self, doc: dict) -> dict:
+        """Anonymize PII in all text fields of a document dict."""
+        doc = dict(doc)
+        text_fields = ["text", "summary", "key_points", "learnings"]
         for field in text_fields:
-            if case.get(field):
-                case[field] = self.anonymize(case[field])
-        return case
+            if doc.get(field):
+                doc[field] = self.anonymize(doc[field])
+        return doc
+
+    # backward-compat alias
+    def anonymize_case(self, case: dict) -> dict:
+        return self.anonymize_document(case)
 
     # ── Private methods ───────────────────────────────────
     def _apply_regex_patterns(self, text: str) -> str:
