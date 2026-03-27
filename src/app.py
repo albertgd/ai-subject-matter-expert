@@ -1326,23 +1326,36 @@ elif page == "Knowledge Base":
     if query:
         store = get_store()
         with st.spinner("Searching..."):
-            results = store.search_with_score(query, k=k, collection=collection)
-        st.markdown(f"**{len(results)} results** in `{collection}`")
-        for doc, score in results:
-            meta = doc.metadata
-            url   = meta.get("url", "")
-            title = meta.get("title", "Unknown")
-            with st.expander(f"{title}  ·  score {score:.3f}"):
-                cols = st.columns(2)
-                with cols[0]:
-                    if url: st.markdown(f"[{meta.get('source_name', url)}]({url})")
-                    st.caption(f"Date: {meta.get('date','—')}")
-                with cols[1]:
-                    topics = meta.get("topics", "")
-                    if topics:
-                        chips = "".join(f'<span class="source-chip">{t.strip()}</span>' for t in topics.split(",") if t.strip())
-                        st.markdown(chips, unsafe_allow_html=True)
-                st.text(doc.page_content[:600] + ("..." if len(doc.page_content) > 600 else ""))
+            try:
+                results = store.search_with_score(query, k=k, collection=collection)
+            except Exception as e:
+                st.error(
+                    f"Could not search `{collection}`: {e}\n\n"
+                    "Go to **Pipeline → Build KB** and enable **Force full rebuild** to fix the index."
+                )
+                st.stop()
+        if not results:
+            st.info(
+                f"No results in `{collection}`. This collection may be empty or its index is missing — "
+                "go to **Pipeline → Build KB** and enable **Force full rebuild**."
+            )
+        else:
+            st.markdown(f"**{len(results)} results** in `{collection}`")
+            for doc, score in results:
+                meta = doc.metadata
+                url   = meta.get("url", "")
+                title = meta.get("title", "Unknown")
+                with st.expander(f"{title}  ·  score {score:.3f}"):
+                    cols = st.columns(2)
+                    with cols[0]:
+                        if url: st.markdown(f"[{meta.get('source_name', url)}]({url})")
+                        st.caption(f"Date: {meta.get('date','—')}")
+                    with cols[1]:
+                        topics = meta.get("topics", "")
+                        if topics:
+                            chips = "".join(f'<span class="source-chip">{t.strip()}</span>' for t in topics.split(",") if t.strip())
+                            st.markdown(chips, unsafe_allow_html=True)
+                    st.text(doc.page_content[:600] + ("..." if len(doc.page_content) > 600 else ""))
 
 
 # ══════════════════════════════════════════════════════════════════════════════

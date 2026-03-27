@@ -226,7 +226,16 @@ class VectorStore:
     ) -> List[Document]:
         """Semantic similarity search."""
         store = self.get_collection(collection)
-        return store.similarity_search(query, k=k, filter=filter_dict)
+        try:
+            return store.similarity_search(query, k=k, filter=filter_dict)
+        except Exception as e:
+            if "Nothing found on disk" in str(e) or "hnsw segment" in str(e).lower():
+                logger.warning(
+                    f"Collection '{collection}' index is missing or corrupt on disk. "
+                    "Run 'Build KB' with 'Force full rebuild' to fix it."
+                )
+                return []
+            raise
 
     def search_with_score(
         self,
@@ -237,7 +246,16 @@ class VectorStore:
     ) -> List[Tuple[Document, float]]:
         """Semantic similarity search with relevance scores."""
         store = self.get_collection(collection)
-        return store.similarity_search_with_score(query, k=k, filter=filter_dict)
+        try:
+            return store.similarity_search_with_score(query, k=k, filter=filter_dict)
+        except Exception as e:
+            if "Nothing found on disk" in str(e) or "hnsw segment" in str(e).lower():
+                logger.warning(
+                    f"Collection '{collection}' index is missing or corrupt on disk. "
+                    "Run 'Build KB' with 'Force full rebuild' to fix it."
+                )
+                return []
+            raise
 
     def multi_search(
         self,
