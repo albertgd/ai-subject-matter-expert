@@ -23,6 +23,26 @@ _NOISE_TAGS = [
 
 _MIN_TEXT_LENGTH = 300
 
+# Domains/TLDs that are never useful research sources
+_BLOCKED_DOMAINS = {
+    # Social media / video
+    "youtube.com", "youtu.be", "vimeo.com", "tiktok.com", "instagram.com",
+    "facebook.com", "fb.com", "twitter.com", "x.com", "pinterest.com",
+    "reddit.com", "tumblr.com", "snapchat.com", "linkedin.com",
+    # Shopping / classifieds
+    "amazon.com", "ebay.com", "etsy.com", "craigslist.org", "yelp.com",
+    # News aggregators / click-bait
+    "buzzfeed.com", "dailymail.co.uk", "thesun.co.uk",
+    # File-sharing / torrents
+    "scribd.com", "slideshare.net",
+}
+
+# Any domain containing these strings is blocked regardless of TLD
+_BLOCKED_DOMAIN_PATTERNS = [
+    "porn", "xxx", "adult", "sex", "nude", "naked", "escort",
+    "casino", "slots", "poker", "betting", "gambling",
+]
+
 
 class WebFetcher(BaseCollector):
     """Fetches and cleans arbitrary web pages."""
@@ -37,6 +57,10 @@ class WebFetcher(BaseCollector):
           source_id, source_name, title, url, text, date, author
         """
         if self._is_binary_url(url):
+            return None
+
+        if self._is_blocked_domain(url):
+            logger.debug(f"Blocked domain, skipping: {url}")
             return None
 
         source_id = f"web_{self._url_to_id(url)}"
@@ -138,3 +162,14 @@ class WebFetcher(BaseCollector):
                        ".ppt", ".pptx", ".zip", ".tar", ".gz",
                        ".jpg", ".jpeg", ".png", ".gif", ".mp4", ".mp3"}
         return any(url.lower().endswith(ext) for ext in binary_exts)
+
+    @staticmethod
+    def _is_blocked_domain(url: str) -> bool:
+        """Return True if the URL belongs to a blocked/irrelevant domain."""
+        try:
+            host = urlparse(url).netloc.lower().lstrip("www.")
+        except Exception:
+            return False
+        if host in _BLOCKED_DOMAINS:
+            return True
+        return any(pat in host for pat in _BLOCKED_DOMAIN_PATTERNS)

@@ -51,7 +51,7 @@ def _ddg_search(query: str, max_results: int) -> List[Dict]:
         from duckduckgo_search import DDGS
         results = []
         with DDGS() as ddgs:
-            for r in ddgs.text(query, max_results=max_results):
+            for r in ddgs.text(query, max_results=max_results, safesearch="on"):
                 results.append({
                     "title": r.get("title", ""),
                     "url": r.get("href", ""),

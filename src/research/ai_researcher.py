@@ -163,26 +163,34 @@ Return ONLY a JSON array of {n} query strings, nothing else.
     def _filter_relevant(
         self, results: List[Dict], subject: str
     ) -> List[Dict]:
-        """Use LLM to filter out irrelevant search results (quick pass)."""
+        """Filter search results: require keyword hit AND a non-blocked domain."""
         if not results:
             return []
 
-        # Quick heuristic filter first (much faster than LLM for every result)
+        from src.research.web_fetcher import WebFetcher
         subject_lower = subject.lower()
         keyword_lower = [kw.lower() for kw in SUBJECT_KEYWORDS]
 
         scored = []
         for r in results:
+            url = r.get("url", "")
+            # Drop blocked domains at query-result stage (before even fetching)
+            if not url or WebFetcher._is_blocked_domain(url):
+                continue
+
             text = (r.get("title", "") + " " + r.get("snippet", "")).lower()
             score = sum(1 for kw in keyword_lower if kw in text)
             if subject_lower in text:
                 score += 3
+
+            # Require at least one keyword match in title+snippet
+            if score == 0:
+                continue
+
             scored.append((score, r))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        # Keep top half, minimum 3
-        keep = max(3, len(scored) // 2)
-        return [r for _, r in scored[:keep]]
+        return [r for _, r in scored]
 
     # ── Fallback query builder ─────────────────────────────
     def _fallback_queries(self, subject: str, n: int) -> List[str]:
