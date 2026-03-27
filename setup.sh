@@ -35,11 +35,21 @@ pip install -r requirements.txt --quiet
 echo -e "${GREEN}✓${NC} Dependencies installed"
 
 # spaCy model (for PII removal)
-echo "  Downloading spaCy language model..."
-python -m spacy download en_core_web_lg --quiet 2>/dev/null || \
-    python -m spacy download en_core_web_sm --quiet 2>/dev/null || \
-    echo -e "${YELLOW}  ⚠ spaCy model not installed — PII removal will use regex only${NC}"
-echo -e "${GREEN}✓${NC} Language model ready"
+# We use `pip install <wheel>` directly instead of `python -m spacy download`
+# because spacy download searches for pip/uv on the system PATH and fails in
+# many environments (conda, nix, some Linux distros). Using pip from the venv
+# directly is always reliable.
+echo "  Installing spaCy language model..."
+SPACY_VER=$(python -c "import spacy; v=spacy.__version__; p=v.split('.'); print(f'{p[0]}.{p[1]}.0')" 2>/dev/null || echo "3.8.0")
+SPACY_BASE="https://github.com/explosion/spacy-models/releases/download"
+
+pip install \
+    "en_core_web_lg @ ${SPACY_BASE}/en_core_web_lg-${SPACY_VER}/en_core_web_lg-${SPACY_VER}-py3-none-any.whl" \
+    --quiet 2>/dev/null && echo -e "${GREEN}✓${NC} spaCy model ready (en_core_web_lg)" || \
+pip install \
+    "en_core_web_sm @ ${SPACY_BASE}/en_core_web_sm-${SPACY_VER}/en_core_web_sm-${SPACY_VER}-py3-none-any.whl" \
+    --quiet 2>/dev/null && echo -e "${YELLOW}  ✓ spaCy sm model installed (lg unavailable)${NC}" || \
+echo -e "${YELLOW}  ⚠ spaCy model not installed — PII removal will use regex only${NC}"
 
 # .env
 if [ ! -f ".env" ]; then
@@ -57,7 +67,7 @@ echo ""
 echo -e "  Start the app:  ${BOLD}./run.sh${NC}"
 echo ""
 echo -e "  The app will guide you through the rest:"
-echo -e "    1. Enter your API key (Anthropic / OpenAI / Google)"
+echo -e "    1. Enter your API key (Groq is free — get one at console.groq.com)"
 echo -e "    2. Choose a subject"
 echo -e "    3. Click 'Build Everything'"
 echo -e "    4. Chat with your expert"

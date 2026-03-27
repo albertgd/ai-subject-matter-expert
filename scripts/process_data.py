@@ -8,9 +8,9 @@ For each raw document:
   4. Save to data/processed/
 
 Usage:
-    python scripts/process_data.py                   # process all raw docs
+    python scripts/process_data.py                   # process only new raw docs (default)
+    python scripts/process_data.py --reprocess       # force reprocess all docs, even existing ones
     python scripts/process_data.py --limit 100       # process first N
-    python scripts/process_data.py --skip-structured # skip already-structured docs
     python scripts/process_data.py --fast-model      # use cheaper LLM
     python scripts/process_data.py --no-structure    # skip LLM structuring
 """
@@ -64,8 +64,8 @@ def main():
     parser = argparse.ArgumentParser(description="Process raw documents.")
     parser.add_argument("--limit", type=int, default=0,
                         help="Process only first N documents (0 = all)")
-    parser.add_argument("--skip-structured", action="store_true",
-                        help="Skip documents already structured")
+    parser.add_argument("--reprocess", action="store_true",
+                        help="Force reprocess all docs, even ones already in data/processed/")
     parser.add_argument("--fast-model", action="store_true",
                         help="Use cheap/fast LLM model (Haiku / GPT-4o-mini)")
     parser.add_argument("--no-structure", action="store_true",
@@ -99,7 +99,7 @@ def main():
     for i, doc in enumerate(docs, 1):
         source_id = doc.get("source_id", f"doc_{i}")
 
-        if args.skip_structured and already_processed(source_id):
+        if not args.reprocess and already_processed(source_id):
             skipped += 1
             continue
 

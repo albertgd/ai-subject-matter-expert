@@ -16,6 +16,7 @@ load_dotenv(ROOT / ".env")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 PRIMARY_LLM = os.getenv("PRIMARY_LLM", "claude-sonnet-4-6")
 
 # ── HuggingFace ───────────────────────────────────────────
@@ -71,8 +72,10 @@ def active_llm_provider() -> str:
         return "anthropic"
     if GOOGLE_API_KEY:
         return "google"
+    if GROQ_API_KEY:
+        return "groq"
     if OPENAI_API_KEY:
         return "openai"
     raise ValueError(
-        "No LLM API key found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY in .env"
+        "No LLM API key found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY in .env"
     )

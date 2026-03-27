@@ -48,30 +48,8 @@ class ContentStructurer:
         self.llm = self._init_llm(llm_provider, model_name)
 
     def _init_llm(self, provider: str, model_name: Optional[str]):
-        from src.config import PRIMARY_LLM, active_llm_provider
-
-        if provider == "auto":
-            provider = active_llm_provider()
-
-        if provider == "anthropic":
-            from langchain_anthropic import ChatAnthropic
-            return ChatAnthropic(
-                model=model_name or PRIMARY_LLM,
-                temperature=0.1,
-                max_tokens=4096,
-            )
-        elif provider == "google":
-            from langchain_google_genai import ChatGoogleGenerativeAI
-            return ChatGoogleGenerativeAI(
-                model=model_name or "gemini-2.5-flash",
-                temperature=0.1,
-            )
-        else:
-            from langchain_openai import ChatOpenAI
-            return ChatOpenAI(
-                model=model_name or "gpt-4o-mini",
-                temperature=0.1,
-            )
+        from src.agents.llm_factory import build_llm
+        return build_llm(provider=provider, model_name=model_name)
 
     def structure(self, document: Dict, max_text_chars: int = 15_000) -> Dict:
         """

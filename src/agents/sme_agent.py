@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from src.config import SUBJECT, SUBJECT_DESCRIPTION, PRIMARY_LLM, active_llm_provider
+from src.config import SUBJECT, SUBJECT_DESCRIPTION, PRIMARY_LLM, GROQ_API_KEY, active_llm_provider
 from src.rag.retriever import Retriever
 
 logger = logging.getLogger(__name__)
@@ -161,8 +161,15 @@ class SMEAgent:
         elif provider == "google":
             from langchain_google_genai import ChatGoogleGenerativeAI
             return ChatGoogleGenerativeAI(
-                model=model_name or "gemini-2.5-flash",
+                model=model_name or "gemini-2.0-flash",
                 temperature=0.2,
+            )
+        elif provider == "groq":
+            from langchain_groq import ChatGroq
+            return ChatGroq(
+                model=model_name or "llama-3.3-70b-versatile",
+                temperature=0.2,
+                api_key=GROQ_API_KEY,
             )
         else:
             from langchain_openai import ChatOpenAI
