@@ -5,7 +5,9 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Point it at any subject — quantum physics, climate change, personal finance, cooking — and it will research the internet, build a knowledge base, and give you a conversational expert that cites its sources.
+Point it at any subject — quantum physics, climate change, divorce law, cooking — and it will research the internet, build a knowledge base, and give you a conversational expert that cites its sources.
+
+**100% free to run** using [Groq](https://console.groq.com/keys) (Llama 3.3 70B) or [Google Gemini](https://aistudio.google.com/apikey) free tiers. No credit card required.
 
 ---
 
@@ -35,52 +37,64 @@ Any website          ──►  LLM Structure       ──►  Index         ─
 ```bash
 git clone https://github.com/albertgd/ai-subject-matter-expert.git
 cd ai-subject-matter-expert
-./setup.sh   # installs everything
+./setup.sh   # installs everything (including spaCy model)
 ./run.sh     # opens the app at http://localhost:8501
 ```
 
 The app walks you through the rest — no terminal commands or file editing needed:
 
-1. **Setup page** — enter your API key, pick a subject from presets (or type your own)
+1. **Setup page** — pick a free LLM provider (Groq recommended), enter your API key, drill down to your subject using the 3-level preset browser
 2. **Pipeline page** → click **Build Everything** — researches the web, processes docs, builds the KB
 3. **Chat page** — ask questions, get grounded answers with cited sources
 
-![Setup → Pipeline → Chat]
+---
+
+## Free API Keys
+
+No paid API key is required. The two easiest free options:
+
+| Provider | Model | Limit | Link |
+|---|---|---|---|
+| **Groq** | Llama 3.3 70B | Generous free tier, no credit card | [console.groq.com/keys](https://console.groq.com/keys) |
+| **Google Gemini** | Gemini 2.0 Flash | Free tier via AI Studio | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+
+Paid providers (Anthropic Claude, OpenAI GPT-4) are also supported.
 
 ---
 
-## Changing the Subject
+## Subject Presets
 
-The easiest way is the **Setup page** in the app — pick a preset or type your own subject.
+The Setup page includes **22 subject categories** with **3 levels of specialisation**. Click any level to use it, or drill down further:
 
-Alternatively, edit `.env` directly:
+```
+⚖️ Law
+  └── Family Law
+        └── Divorce
+        └── Child Custody & Support
+        └── Adoption & Surrogacy
+  └── Criminal Law
+        └── Criminal Defence
+        └── White Collar Crime
+        └── Sentencing & Parole
+  └── Employment & Labour Law
+  └── Corporate & Commercial Law
+  └── Immigration Law
 
-```bash
-SUBJECT=quantum physics
-SUBJECT_DESCRIPTION=quantum mechanics, quantum computing, and quantum field theory
-SUBJECT_KEYWORDS=quantum,entanglement,superposition,qubit,Schrodinger,Heisenberg
+🤖 Artificial Intelligence
+  └── Machine Learning
+        └── Deep Learning
+        └── Reinforcement Learning
+        └── MLOps
+  └── Natural Language Processing
+        └── Large Language Models
+        └── ...
+  └── Computer Vision
+  └── AI Ethics & Safety
 ```
 
-Then run the pipeline again. Everything — research queries, agent prompts, UI labels, dataset name — adapts automatically.
+Other top-level categories: Cybersecurity, Data Science, Climate Change, Personal Finance, Nutrition & Health, Fitness & Exercise, Mental Health, Medicine & Healthcare, Space Exploration, Genetics & Genomics, History, Game Development, Cooking & Culinary Arts, Electric Vehicles, Ecology & Environment, Blockchain & Crypto, Music Theory & Production, Mobile App Development, Architecture & Engineering — each with sub-specialties.
 
-**More examples:**
-
-```bash
-# Climate change
-SUBJECT=climate change
-SUBJECT_DESCRIPTION=climate science, global warming, and environmental policy
-SUBJECT_KEYWORDS=climate change,global warming,CO2,greenhouse gas,IPCC,carbon
-
-# Personal finance
-SUBJECT=personal finance
-SUBJECT_DESCRIPTION=personal finance, investing, budgeting, and wealth management
-SUBJECT_KEYWORDS=investing,stocks,bonds,ETF,budgeting,savings,retirement,401k
-
-# Divorce law (original use case)
-SUBJECT=divorce law
-SUBJECT_DESCRIPTION=divorce and family law proceedings
-SUBJECT_KEYWORDS=divorce,custody,alimony,child support,marital property
-```
+You can also use **Custom** to enter any subject of your own.
 
 ---
 
@@ -88,12 +102,13 @@ SUBJECT_KEYWORDS=divorce,custody,alimony,child support,marital property
 
 | Page | What it does |
 |---|---|
-| 🛠️ **Setup** | Enter API key + choose subject — writes `.env` for you |
+| 🛠️ **Setup** | Pick LLM provider + API key + choose subject with 3-level preset drill-down |
 | 🏠 **Home** | Status dashboard + one-click "Build Everything" |
 | 💬 **Chat** | Ask questions, get grounded answers with cited sources |
-| ⚙️ **Pipeline** | Run research / processing / KB build with real-time logs |
+| ⚙️ **Pipeline** | Run research / processing / KB build with real-time logs + reset button |
 | 🔍 **Knowledge Base** | Search and browse indexed content |
 | 📦 **Dataset** | View, download JSONL, upload to HuggingFace |
+| 👤 **About** | Project info and author links |
 
 ---
 
@@ -102,7 +117,7 @@ SUBJECT_KEYWORDS=divorce,custody,alimony,child support,marital property
 ```
 ai-subject-matter-expert/
 ├── src/
-│   ├── app.py                       # Streamlit web UI (7 pages)
+│   ├── app.py                       # Streamlit web UI (8 pages)
 │   ├── config.py                    # All configuration (reads from .env)
 │   ├── research/
 │   │   ├── base.py                  # Base collector (retry, save, dedup)
@@ -120,7 +135,7 @@ ai-subject-matter-expert/
 │   │   └── retriever.py             # Multi-collection semantic retrieval
 │   └── agents/
 │       ├── sme_agent.py             # Conversational RAG agent + CLI
-│       └── llm_factory.py           # Shared LLM builder (Anthropic/OpenAI/Google)
+│       └── llm_factory.py           # Shared LLM builder — add new providers here
 │
 ├── scripts/
 │   ├── research.py                  # Run AI-powered web research
@@ -151,15 +166,16 @@ ai-subject-matter-expert/
 
 ## Configuration
 
-Copy `.env.example` to `.env`:
+Copy `.env.example` to `.env` (or use the Setup page — it writes `.env` for you):
 
 ```bash
-# Required — at least one LLM key
+# Required — at least one LLM key (Groq is free)
+GROQ_API_KEY=gsk_...
+GOOGLE_API_KEY=AIza...
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
-GOOGLE_API_KEY=AIza...
 
-# Subject (the main thing to configure)
+# Subject (set via the Setup page or edit directly)
 SUBJECT=artificial intelligence
 SUBJECT_DESCRIPTION=artificial intelligence, machine learning, and deep learning
 SUBJECT_KEYWORDS=artificial intelligence,machine learning,deep learning,neural networks,LLM
@@ -192,20 +208,16 @@ python scripts/research.py --max 100 --queries 15
 # Output: data/raw/{source}/*.json
 ```
 
-The AI researcher:
-1. Asks the LLM to generate N diverse search queries for your subject
-2. Searches the web (DuckDuckGo/Tavily) for each query
-3. Scores results for relevance using keyword matching
-4. Fetches and cleans the top pages
+Already-fetched URLs are skipped automatically on subsequent runs.
 
 ### Step 2: Process
 
 ```bash
-# Full pipeline (clean + PII + LLM structure)
+# Process only new docs (default — skips already-processed)
 python scripts/process_data.py
 
-# With options
-python scripts/process_data.py --limit 200 --fast-model --skip-structured
+# Force reprocess everything
+python scripts/process_data.py --reprocess
 
 # Skip LLM structuring (faster, no API credits used)
 python scripts/process_data.py --no-structure
@@ -228,7 +240,7 @@ python scripts/process_data.py --no-structure
 ### Step 3: Build Knowledge Base
 
 ```bash
-python scripts/build_rag.py           # incremental
+python scripts/build_rag.py           # incremental (default)
 python scripts/build_rag.py --rebuild # full rebuild
 python scripts/build_rag.py --stats   # show counts
 ```
@@ -240,6 +252,10 @@ ChromaDB collections:
 | `{subject}_documents` | Full text chunks | Detailed content search |
 | `{subject}_learnings` | Key points + learnings | Quick insight lookup |
 | `{subject}_summaries` | Document overviews | Topic browsing |
+
+### Reset Everything
+
+To wipe all data and start fresh, use the **🗑️ Danger Zone** section at the bottom of the Pipeline page. It deletes `data/raw/`, `data/processed/`, and `data/vector_db/` after a two-step confirmation.
 
 ### Step 4: Use the Agent
 
@@ -290,10 +306,16 @@ ds = load_dataset("username/my-subject-dataset", split="train")
 
 ---
 
+## Adding a New LLM Provider
+
+All provider logic lives in one place: `src/agents/llm_factory.py`. Add a new `elif` block there and it's automatically available across the entire pipeline — research, processing, and chat.
+
+---
+
 ## Testing
 
 ```bash
-pytest tests/ -v                      # full suite (47 tests)
+pytest tests/ -v                      # full suite
 pytest tests/test_research.py -v     # research module
 pytest tests/test_processors.py -v   # text cleaner, PII, structurer
 pytest tests/test_rag.py -v          # vector store, indexer, retriever
@@ -306,12 +328,13 @@ pytest tests/test_agent.py -v        # agent (mocked LLM)
 
 | Component | Technology |
 |---|---|
-| LLM | Claude (Anthropic) / GPT-4o (OpenAI) / Gemini (Google) |
+| LLM (free) | Groq (Llama 3.3 70B) / Google Gemini 2.0 Flash |
+| LLM (paid) | Anthropic Claude / OpenAI GPT-4o |
 | AI Web Research | LLM query generation + DuckDuckGo / Tavily |
 | Wikipedia | wikipedia-api |
 | Embeddings | `paraphrase-multilingual-MiniLM-L12-v2` (free, multilingual) |
 | Vector DB | ChromaDB (local, no server needed) |
-| PII Removal | Microsoft Presidio + spaCy |
+| PII Removal | Microsoft Presidio + spaCy `en_core_web_lg` |
 | Dataset | HuggingFace `datasets` |
 | UI | Streamlit |
 | Testing | pytest |
@@ -328,4 +351,8 @@ Dataset (when published): CC BY 4.0. Content sourced from public internet source
 
 ## Author
 
-**Albert García Díaz** — [@albertgd](https://github.com/albertgd)
+**Albert García Díaz**
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-albertgd-0077b5?logo=linkedin)](https://www.linkedin.com/in/albertgd)
+[![X](https://img.shields.io/badge/X-albertgd-000000?logo=x)](https://twitter.com/albertgd)
+[![GitHub](https://img.shields.io/badge/GitHub-albertgd-24292f?logo=github)](https://github.com/albertgd)
