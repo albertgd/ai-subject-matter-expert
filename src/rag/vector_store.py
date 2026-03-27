@@ -147,6 +147,12 @@ class VectorStore:
 
         Returns dict of {collection: count_added}.
         """
+        def _to_str(val) -> str:
+            """Coerce a value that may be a string or list to a plain string."""
+            if isinstance(val, list):
+                return "\n".join(str(v) for v in val if v)
+            return str(val) if val else ""
+
         content_docs = []
         learning_docs = []
         summary_docs = []
@@ -166,7 +172,7 @@ class VectorStore:
             title = doc.get("title", source_id)
 
             # Content: full text, chunked
-            text = doc.get("text", "").strip()
+            text = _to_str(doc.get("text", "")).strip()
             if text and len(text) > 30:
                 chunks = self._chunk_text(text, max_chars=2000, overlap=200)
                 for j, chunk in enumerate(chunks):
@@ -176,9 +182,10 @@ class VectorStore:
                     ))
 
             # Learnings: key_points + learnings fields
+            # Both fields may be a string or a list depending on the LLM response
             learnings_parts = []
-            key_points = doc.get("key_points", "").strip()
-            learnings = doc.get("learnings", "").strip()
+            key_points = _to_str(doc.get("key_points", "")).strip()
+            learnings = _to_str(doc.get("learnings", "")).strip()
             if key_points and len(key_points) > 30:
                 learnings_parts.append(key_points)
             if learnings and len(learnings) > 30:
@@ -192,7 +199,7 @@ class VectorStore:
                 ))
 
             # Summary
-            summary = doc.get("summary", "").strip()
+            summary = _to_str(doc.get("summary", "")).strip()
             if summary and len(summary) > 50:
                 summary_docs.append(Document(
                     page_content=f"[SUMMARY — {title}]\n\n{summary}",
