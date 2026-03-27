@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-from src.config import SUBJECT, SUBJECT_DESCRIPTION, PRIMARY_LLM, GROQ_API_KEY, active_llm_provider
+from src.config import SUBJECT, SUBJECT_DESCRIPTION, PRIMARY_LLM, GROQ_API_KEY, LANGUAGE, active_llm_provider
 from src.rag.retriever import Retriever
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,16 @@ RULES:
 Your responses should be:
 - Accurate and well-sourced
 - Clear and well-organized
-- Appropriately detailed based on the complexity of the question"""
+- Appropriately detailed based on the complexity of the question
+{language_instruction}"""
+
+_LANGUAGE_INSTRUCTIONS = {
+    "es": (
+        "\nIMPORTANTE: Responde SIEMPRE en español, independientemente del idioma "
+        "de la pregunta. Usa terminología jurídica/técnica española cuando sea aplicable."
+    ),
+    "en": "",
+}
 
 _NO_KB_WARNING = """
 NOTE: The knowledge base is empty or not yet built.
@@ -83,6 +92,7 @@ class SMEAgent:
             content=_SYSTEM_PROMPT_TEMPLATE.format(
                 subject=SUBJECT,
                 subject_description=SUBJECT_DESCRIPTION,
+                language_instruction=_LANGUAGE_INSTRUCTIONS.get(LANGUAGE, ""),
             )
         )]
         self._kb_ready = self.retriever.is_ready()
@@ -126,6 +136,7 @@ class SMEAgent:
             content=_SYSTEM_PROMPT_TEMPLATE.format(
                 subject=SUBJECT,
                 subject_description=SUBJECT_DESCRIPTION,
+                language_instruction=_LANGUAGE_INSTRUCTIONS.get(LANGUAGE, ""),
             )
         )]
 

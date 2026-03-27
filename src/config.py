@@ -65,6 +65,12 @@ COLLECTION_NAME = SUBJECT.lower().replace(" ", "_")[:30]
 DEFAULT_K_DOCS = int(os.getenv("DEFAULT_K_DOCS", "5"))
 DEFAULT_K_LEARNINGS = int(os.getenv("DEFAULT_K_LEARNINGS", "3"))
 
+# ── Language & Region ─────────────────────────────────────
+# LANGUAGE: "en" (English) or "es" (Spanish)
+# REGION:   "anywhere" | "spain" | "catalunya" | "europe"
+LANGUAGE = os.getenv("LANGUAGE", "en")
+REGION   = os.getenv("REGION", "anywhere")
+
 
 def active_llm_provider() -> str:
     """Detect which LLM provider is configured."""

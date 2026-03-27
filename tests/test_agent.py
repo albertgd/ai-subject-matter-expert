@@ -48,9 +48,10 @@ class TestSMEAgentOffline:
 
         from langchain_core.messages import SystemMessage
         from src.config import SUBJECT, SUBJECT_DESCRIPTION
-        from src.agents.sme_agent import _SYSTEM_PROMPT_TEMPLATE
+        from src.agents.sme_agent import _SYSTEM_PROMPT_TEMPLATE, _LANGUAGE_INSTRUCTIONS
         agent.history = [SystemMessage(content=_SYSTEM_PROMPT_TEMPLATE.format(
             subject=SUBJECT, subject_description=SUBJECT_DESCRIPTION,
+            language_instruction=_LANGUAGE_INSTRUCTIONS.get("en", ""),
         ))]
         agent._kb_ready = kb_ready
         agent.k_documents = 4

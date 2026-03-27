@@ -156,6 +156,672 @@ def stream_command(cmd: list, placeholder):
     return process.returncode
 
 
+# ── Language / UI translations ────────────────────────────────────────────────
+ui_lang = get_env("LANGUAGE", "en")
+
+_TEXTS = {
+    "en": {
+        "app_title": "AI SME",
+        "subject_label": "Subject:",
+        "raw_docs": "Raw docs:",
+        "processed": "Processed:",
+        "not_configured": "⚠️ Not configured",
+        "nav_home": "Home", "nav_chat": "Chat", "nav_pipeline": "Pipeline",
+        "nav_kb": "Knowledge Base", "nav_dataset": "Dataset",
+        "nav_setup": "Setup", "nav_about": "About",
+        "setup_title": "🛠️ Setup",
+        "setup_sub": "Configure once — everything else happens inside the app.",
+        "step1_title": "Step 1 — LLM API Key",
+        "step1_desc": "The AI needs an LLM to generate search queries, extract knowledge, and answer questions.",
+        "step2_title": "Step 2 — Choose a Subject",
+        "step2_desc": "Click a category to select it, or drill down up to 3 levels for a specialty. You can save at any level.",
+        "step3_title": "Step 3 — Research Region",
+        "step3_desc": "Choose the geographic focus for research. Use the language buttons at the top of the sidebar to switch language instantly.",
+        "lang_label": "Interface language",
+        "lang_en": "English", "lang_es": "Español",
+        "region_label": "Research region",
+        "region_anywhere": "🌍 Anywhere (global)",
+        "region_spain": "🇪🇸 Spain",
+        "region_catalunya": "🏴 Catalunya",
+        "region_europe": "🇪🇺 Europe",
+        "save_btn": "💾  Save Configuration",
+        "save_ok": "Configuration saved!",
+        "save_no_key": "Please enter your API key.",
+        "setup_done": "Configuration is complete. Go to **Pipeline** to start researching, or **Chat** to talk to your expert.",
+        "subject_name": "Subject name", "description": "Description",
+        "keywords": "Keywords (comma-separated)",
+        "selected": "Selected:",
+        "home_sub": "Build an AI expert on any topic.",
+        "not_configured_warn": "Not configured yet. Go to **Setup** to add your API key and choose a subject.",
+        "kb_ready": "Ready", "kb_empty": "Empty",
+        "raw_documents": "Raw Documents", "processed_label": "Processed",
+        "kb_chunks": "KB Chunks", "status": "Status",
+        "quick_start": "Quick Start",
+        "quick_start_desc": "Build your knowledge base in one click:",
+        "max_docs": "Max documents to fetch",
+        "fast_mode": "Fast mode (skip LLM structuring — much quicker)",
+        "build_everything": "🚀  Build Everything",
+        "step1_research": "**Step 1/3 — Researching the web...**",
+        "step2_process": "**Step 2/3 — Processing documents...**",
+        "step3_build": "**Step 3/3 — Building knowledge base...**",
+        "research_failed": "Research step failed.",
+        "process_failed": "Processing step failed.",
+        "kb_ready_msg": "Knowledge base is ready! Go to Chat to start asking questions.",
+        "how_it_works": "### How It Works",
+        "step_research": "Research", "step_research_desc": "AI generates smart queries → searches DuckDuckGo/Tavily → fetches pages + Wikipedia",
+        "step_process": "Process", "step_process_desc": "Clean text, remove PII (names/emails/phones), extract structured knowledge with LLM",
+        "step_index": "Index", "step_index_desc": "Embed documents into ChromaDB with multilingual sentence transformers",
+        "step_chat": "Chat", "step_chat_desc": "Ask anything — grounded answers with cited sources",
+        "chat_title": "💬 Chat",
+        "chat_sub": "Ask anything about {subject}.",
+        "chat_no_config": "Go to **Setup** to configure your API key first.",
+        "chat_no_kb": "Knowledge base is empty — the agent will use general knowledge only. Go to **Pipeline** to build it.",
+        "thinking": "Thinking...",
+        "sources": "{n} sources",
+        "clear_conv": "🗑️  Clear conversation",
+        "chat_input": "Ask about {subject}...",
+        "pipeline_title": "⚙️ Pipeline",
+        "pipeline_sub": "Build the knowledge base for <strong>{subject}</strong>.",
+        "pipeline_no_config": "Go to **Setup** first.",
+        "build_everything_exp": "🚀  **Build Everything** (recommended for first run)",
+        "ai_queries": "AI search queries",
+        "fast_mode2": "Fast mode (skip LLM structuring)",
+        "reprocess": "Reprocess already-processed docs",
+        "rebuild": "Force full rebuild of KB",
+        "step_research_title": "**① Researching the web and Wikipedia...**",
+        "step_process_title": "**② Processing documents (clean → PII → structure)...**",
+        "step_build_title": "**③ Building knowledge base...**",
+        "done_msg": "Done! Your expert is ready. Go to **Chat**.",
+        "step_failed": "A step failed. Check the log above.",
+        "tab_research": "① Research", "tab_process": "② Process", "tab_build": "③ Build KB",
+        "research_desc": "**AI-powered web research** — generates queries, searches the web, fetches Wikipedia.",
+        "run_research": "Run Research",
+        "research_complete": "Research complete!",
+        "research_fail": "Research failed — see log.",
+        "process_desc": "**Clean + anonymize PII + extract structured knowledge with LLM.**",
+        "limit": "Limit (0 = all)", "fast_model": "Fast model (cheaper)",
+        "reprocess2": "Reprocess already-processed docs",
+        "no_structure": "No LLM structuring (fastest)",
+        "run_process": "Run Processing",
+        "process_complete": "Processing complete!",
+        "process_fail": "Processing failed — see log.",
+        "build_desc": "**Index processed documents into ChromaDB for semantic search.**",
+        "force_rebuild": "Force full rebuild (delete existing index)",
+        "build_kb": "Build Knowledge Base",
+        "build_complete": "Knowledge base built!",
+        "build_fail": "Build failed — see log.",
+        "source_select": "Source",
+        "max_docs_short": "Max docs",
+        "queries_label": "Queries",
+        "kb_page_title": "🔍 Knowledge Base",
+        "kb_page_sub": "Search and browse the indexed knowledge.",
+        "kb_empty_warn": "Knowledge base is empty. Go to **Pipeline** to build it.",
+        # KB search
+        "kb_documents": "Documents", "kb_learnings": "Learnings", "kb_summaries": "Summaries",
+        "kb_chunks": "chunks",
+        "kb_search_header": "Search",
+        "kb_search_input": "Search query",
+        "kb_search_placeholder": "Enter any question or topic...",
+        "kb_results_slider": "Results",
+        "kb_collection": "Collection",
+        "kb_searching": "Searching...",
+        "kb_no_results": "No results in `{col}`. This collection may be empty or its index is missing — go to **Pipeline → Build KB** and enable **Force full rebuild**.",
+        "kb_n_results": "**{n} results** in `{col}`",
+        "kb_date": "Date:",
+        "kb_search_error": "Could not search `{col}`: {err}\n\nGo to **Pipeline → Build KB** and enable **Force full rebuild** to fix the index.",
+        # Home KB-ready section
+        "kb_ready_goto": "Your expert is ready. Go to **Chat** to ask questions.",
+        "kb_section_header": "### Knowledge Base",
+        # Dataset
+        "dataset_title": "📦 Dataset",
+        "dataset_sub": "View, download, and publish your cleaned dataset.",
+        "dataset_no_docs": "No processed documents yet. Run the Pipeline first.",
+        "dataset_total": "Total Documents",
+        "dataset_filter": "Filter by title or topic",
+        "dataset_matching": "{n} matching",
+        "dataset_col_title": "Title", "dataset_col_source": "Source",
+        "dataset_col_date": "Date", "dataset_col_topics": "Topics",
+        "dataset_col_structured": "Structured",
+        "dataset_view_doc": "View document",
+        "dataset_source": "**Source:**", "dataset_date": "**Date:**",
+        "dataset_author": "**Author:**", "dataset_url": "**URL:**",
+        "dataset_structured_lbl": "**Structured:**",
+        "dataset_yes": "Yes", "dataset_no": "No",
+        "dataset_summary": "Summary", "dataset_key_points": "Key Points",
+        "dataset_learnings": "Learnings",
+        "dataset_download": "⬇️  Download JSONL",
+        "dataset_hf_warn": "Set HF_TOKEN in Setup to enable upload.",
+        "dataset_hf_repo": "HuggingFace Repo ID",
+        "dataset_private": "Private",
+        "dataset_upload": "⬆️  Upload to HuggingFace",
+        "dataset_upload_ok": "Uploaded! View at {url}",
+        # About
+        "about_title": "👤 About",
+        "about_sub": "The person behind AI Subject Matter Expert.",
+        "about_bio": "Builder of AI-powered tools that make expert knowledge accessible to everyone.",
+        "about_project_desc": "AI Subject Matter Expert is an open-source project that lets you spin up a fully grounded, RAG-powered AI expert on <em>any</em> topic — from space exploration to family law — in minutes, using free or low-cost LLM providers.",
+        "about_goal": "The goal is simple: democratise access to deep, reliable knowledge without needing a background in machine learning or paying enterprise prices.",
+        "about_project_title": "### About This Project",
+        "about_features": "- Researches any topic autonomously using web search + Wikipedia\n- Cleans, anonymises, and structures knowledge with LLMs\n- Stores everything in a local vector database (ChromaDB)\n- Answers questions with cited, grounded responses — no hallucination\n- Works with free providers (Groq, Google Gemini) or paid ones (Anthropic, OpenAI)\n- Exports your dataset to JSONL or HuggingFace",
+        "about_contact_title": "### Get in Touch",
+        "about_tagline": "Open-source · Self-hosted<br/>Any topic · Any LLM",
+        "about_stack_title": "Stack",
+        "about_belief": "Built with the belief that everyone deserves access to expert-level knowledge.",
+        # Pipeline metrics & danger zone
+        "pipeline_raw": "Raw Documents", "pipeline_processed": "Processed",
+        "pipeline_fetched": "fetched", "pipeline_structured": "structured",
+        "kb_chunks_label": "KB Chunks", "kb_indexed": "indexed",
+        "danger_title": "🗑️  **Danger Zone — Reset All Data**",
+        "danger_warn": "**This will permanently delete all collected, processed, and indexed data.**",
+        "danger_sub": "Raw documents, processed JSONs, and the entire vector database will be wiped. You will need to run the full pipeline again from scratch.",
+        "danger_confirm": "I understand this cannot be undone — delete everything",
+        "danger_btn": "🗑️  Reset All Data",
+        "danger_ok": "All data has been reset. Run the pipeline to start fresh.",
+    },
+    "es": {
+        "app_title": "AI Experto",
+        "subject_label": "Tema:",
+        "raw_docs": "Docs brutos:",
+        "processed": "Procesados:",
+        "not_configured": "⚠️ Sin configurar",
+        "nav_home": "Inicio", "nav_chat": "Chat", "nav_pipeline": "Pipeline",
+        "nav_kb": "Base de Conocimiento", "nav_dataset": "Dataset",
+        "nav_setup": "Configuración", "nav_about": "Acerca de",
+        "setup_title": "🛠️ Configuración",
+        "setup_sub": "Configura una vez — todo lo demás ocurre dentro de la app.",
+        "step1_title": "Paso 1 — Clave API del LLM",
+        "step1_desc": "La IA necesita un LLM para generar consultas, extraer conocimiento y responder preguntas.",
+        "step2_title": "Paso 2 — Elige un Tema",
+        "step2_desc": "Haz clic en una categoría o navega hasta 3 niveles para una especialidad. Puedes guardar en cualquier nivel.",
+        "step3_title": "Paso 3 — Región de Investigación",
+        "step3_desc": "Elige el foco geográfico para la investigación. Usa los botones de idioma en la parte superior de la barra lateral para cambiar el idioma al instante.",
+        "lang_label": "Idioma de la interfaz",
+        "lang_en": "English", "lang_es": "Español",
+        "region_label": "Región de investigación",
+        "region_anywhere": "🌍 En cualquier lugar (global)",
+        "region_spain": "🇪🇸 España",
+        "region_catalunya": "🏴 Catalunya",
+        "region_europe": "🇪🇺 Europa",
+        "save_btn": "💾  Guardar Configuración",
+        "save_ok": "¡Configuración guardada!",
+        "save_no_key": "Por favor introduce tu clave API.",
+        "setup_done": "Configuración completa. Ve a **Pipeline** para investigar, o a **Chat** para hablar con tu experto.",
+        "subject_name": "Nombre del tema", "description": "Descripción",
+        "keywords": "Palabras clave (separadas por comas)",
+        "selected": "Seleccionado:",
+        "home_sub": "Crea un experto en IA sobre cualquier tema.",
+        "not_configured_warn": "Aún no configurado. Ve a **Configuración** para añadir tu clave API y elegir un tema.",
+        "kb_ready": "Listo", "kb_empty": "Vacío",
+        "raw_documents": "Documentos Brutos", "processed_label": "Procesados",
+        "kb_chunks": "Fragmentos KB", "status": "Estado",
+        "quick_start": "Inicio Rápido",
+        "quick_start_desc": "Construye tu base de conocimiento en un clic:",
+        "max_docs": "Máximo de documentos a obtener",
+        "fast_mode": "Modo rápido (omitir estructuración LLM — mucho más rápido)",
+        "build_everything": "🚀  Construir Todo",
+        "step1_research": "**Paso 1/3 — Investigando la web...**",
+        "step2_process": "**Paso 2/3 — Procesando documentos...**",
+        "step3_build": "**Paso 3/3 — Construyendo base de conocimiento...**",
+        "research_failed": "El paso de investigación falló.",
+        "process_failed": "El paso de procesamiento falló.",
+        "kb_ready_msg": "¡La base de conocimiento está lista! Ve a Chat para hacer preguntas.",
+        "how_it_works": "### Cómo Funciona",
+        "step_research": "Investigar", "step_research_desc": "La IA genera consultas → busca en DuckDuckGo/Tavily → obtiene páginas + Wikipedia",
+        "step_process": "Procesar", "step_process_desc": "Limpiar texto, eliminar PII, extraer conocimiento estructurado con LLM",
+        "step_index": "Indexar", "step_index_desc": "Incrusta documentos en ChromaDB con sentence transformers multilingüe",
+        "step_chat": "Chat", "step_chat_desc": "Pregunta lo que quieras — respuestas fundamentadas con fuentes citadas",
+        "chat_title": "💬 Chat",
+        "chat_sub": "Pregunta cualquier cosa sobre {subject}.",
+        "chat_no_config": "Ve a **Configuración** para configurar tu clave API primero.",
+        "chat_no_kb": "La base de conocimiento está vacía — el agente usará solo conocimiento general. Ve a **Pipeline** para construirla.",
+        "thinking": "Pensando...",
+        "sources": "{n} fuentes",
+        "clear_conv": "🗑️  Limpiar conversación",
+        "chat_input": "Pregunta sobre {subject}...",
+        "pipeline_title": "⚙️ Pipeline",
+        "pipeline_sub": "Construye la base de conocimiento para <strong>{subject}</strong>.",
+        "pipeline_no_config": "Ve a **Configuración** primero.",
+        "build_everything_exp": "🚀  **Construir Todo** (recomendado para la primera vez)",
+        "ai_queries": "Consultas de búsqueda de IA",
+        "fast_mode2": "Modo rápido (omitir estructuración LLM)",
+        "reprocess": "Reprocesar documentos ya procesados",
+        "rebuild": "Forzar reconstrucción completa de KB",
+        "step_research_title": "**① Investigando la web y Wikipedia...**",
+        "step_process_title": "**② Procesando documentos (limpiar → PII → estructura)...**",
+        "step_build_title": "**③ Construyendo base de conocimiento...**",
+        "done_msg": "¡Listo! Tu experto está preparado. Ve a **Chat**.",
+        "step_failed": "Un paso falló. Revisa el log anterior.",
+        "tab_research": "① Investigar", "tab_process": "② Procesar", "tab_build": "③ Construir KB",
+        "research_desc": "**Investigación web con IA** — genera consultas, busca en la web, obtiene Wikipedia.",
+        "run_research": "Iniciar Investigación",
+        "research_complete": "¡Investigación completa!",
+        "research_fail": "Investigación fallida — ver log.",
+        "process_desc": "**Limpiar + anonimizar PII + extraer conocimiento estructurado con LLM.**",
+        "limit": "Límite (0 = todos)", "fast_model": "Modelo rápido (más económico)",
+        "reprocess2": "Reprocesar documentos ya procesados",
+        "no_structure": "Sin estructuración LLM (más rápido)",
+        "run_process": "Iniciar Procesamiento",
+        "process_complete": "¡Procesamiento completo!",
+        "process_fail": "Procesamiento fallido — ver log.",
+        "build_desc": "**Indexar documentos procesados en ChromaDB para búsqueda semántica.**",
+        "force_rebuild": "Forzar reconstrucción completa (eliminar índice existente)",
+        "build_kb": "Construir Base de Conocimiento",
+        "build_complete": "¡Base de conocimiento construida!",
+        "build_fail": "Construcción fallida — ver log.",
+        "source_select": "Fuente",
+        "max_docs_short": "Máx docs",
+        "queries_label": "Consultas",
+        "kb_page_title": "🔍 Base de Conocimiento",
+        "kb_page_sub": "Busca y explora el conocimiento indexado.",
+        "kb_empty_warn": "La base de conocimiento está vacía. Ve a **Pipeline** para construirla.",
+        # KB search
+        "kb_documents": "Documentos", "kb_learnings": "Conocimientos", "kb_summaries": "Resúmenes",
+        "kb_chunks": "fragmentos",
+        "kb_search_header": "Buscar",
+        "kb_search_input": "Consulta de búsqueda",
+        "kb_search_placeholder": "Introduce cualquier pregunta o tema...",
+        "kb_results_slider": "Resultados",
+        "kb_collection": "Colección",
+        "kb_searching": "Buscando...",
+        "kb_no_results": "Sin resultados en `{col}`. Esta colección puede estar vacía o falta su índice — ve a **Pipeline → Construir KB** y activa **Forzar reconstrucción completa**.",
+        "kb_n_results": "**{n} resultados** en `{col}`",
+        "kb_date": "Fecha:",
+        "kb_search_error": "No se pudo buscar en `{col}`: {err}\n\nVe a **Pipeline → Construir KB** y activa **Forzar reconstrucción completa** para reparar el índice.",
+        # Home KB-ready section
+        "kb_ready_goto": "Tu experto está listo. Ve a **Chat** para hacer preguntas.",
+        "kb_section_header": "### Base de Conocimiento",
+        # Dataset
+        "dataset_title": "📦 Conjunto de Datos",
+        "dataset_sub": "Visualiza, descarga y publica tu conjunto de datos limpio.",
+        "dataset_no_docs": "Aún no hay documentos procesados. Ejecuta primero el Pipeline.",
+        "dataset_total": "Total de Documentos",
+        "dataset_filter": "Filtrar por título o tema",
+        "dataset_matching": "{n} coincidencias",
+        "dataset_col_title": "Título", "dataset_col_source": "Fuente",
+        "dataset_col_date": "Fecha", "dataset_col_topics": "Temas",
+        "dataset_col_structured": "Estructurado",
+        "dataset_view_doc": "Ver documento",
+        "dataset_source": "**Fuente:**", "dataset_date": "**Fecha:**",
+        "dataset_author": "**Autor:**", "dataset_url": "**URL:**",
+        "dataset_structured_lbl": "**Estructurado:**",
+        "dataset_yes": "Sí", "dataset_no": "No",
+        "dataset_summary": "Resumen", "dataset_key_points": "Puntos Clave",
+        "dataset_learnings": "Aprendizajes",
+        "dataset_download": "⬇️  Descargar JSONL",
+        "dataset_hf_warn": "Configura HF_TOKEN en Configuración para habilitar la subida.",
+        "dataset_hf_repo": "ID del Repositorio HuggingFace",
+        "dataset_private": "Privado",
+        "dataset_upload": "⬆️  Subir a HuggingFace",
+        "dataset_upload_ok": "¡Subido! Ver en {url}",
+        # About
+        "about_title": "👤 Acerca de",
+        "about_sub": "La persona detrás del Experto en Materia IA.",
+        "about_bio": "Constructor de herramientas con IA que hacen el conocimiento experto accesible para todos.",
+        "about_project_desc": "El Experto en Materia IA es un proyecto de código abierto que te permite crear un experto en IA completamente fundamentado con RAG sobre <em>cualquier</em> tema — desde exploración espacial hasta derecho de familia — en minutos, usando proveedores de LLM gratuitos o de bajo coste.",
+        "about_goal": "El objetivo es sencillo: democratizar el acceso al conocimiento profundo y fiable sin necesitar conocimientos en machine learning ni pagar precios empresariales.",
+        "about_project_title": "### Sobre Este Proyecto",
+        "about_features": "- Investiga cualquier tema de forma autónoma mediante búsqueda web + Wikipedia\n- Limpia, anonimiza y estructura el conocimiento con LLMs\n- Almacena todo en una base de datos vectorial local (ChromaDB)\n- Responde preguntas con respuestas fundamentadas y citadas — sin alucinaciones\n- Funciona con proveedores gratuitos (Groq, Google Gemini) o de pago (Anthropic, OpenAI)\n- Exporta tu conjunto de datos a JSONL o HuggingFace",
+        "about_contact_title": "### Contacto",
+        "about_tagline": "Código abierto · Autoalojado<br/>Cualquier tema · Cualquier LLM",
+        "about_stack_title": "Stack",
+        "about_belief": "Construido con la convicción de que todo el mundo merece acceso al conocimiento de nivel experto.",
+        # Pipeline metrics & danger zone
+        "pipeline_raw": "Documentos Brutos", "pipeline_processed": "Procesados",
+        "pipeline_fetched": "obtenidos", "pipeline_structured": "estructurados",
+        "kb_chunks_label": "Fragmentos KB", "kb_indexed": "indexados",
+        "danger_title": "🗑️  **Zona de Peligro — Eliminar Todos los Datos**",
+        "danger_warn": "**Esto eliminará permanentemente todos los datos recopilados, procesados e indexados.**",
+        "danger_sub": "Los documentos brutos, los JSON procesados y toda la base de datos vectorial serán borrados. Tendrás que volver a ejecutar el pipeline completo desde cero.",
+        "danger_confirm": "Entiendo que esto no se puede deshacer — eliminar todo",
+        "danger_btn": "🗑️  Eliminar Todos los Datos",
+        "danger_ok": "Todos los datos han sido eliminados. Ejecuta el pipeline para empezar de nuevo.",
+    },
+}
+
+def t(key: str) -> str:
+    """Return translated UI string for the current language."""
+    return _TEXTS.get(ui_lang, _TEXTS["en"]).get(key, _TEXTS["en"].get(key, key))
+
+
+# ── Preset category labels (Spanish) ──────────────────────────────────────────
+# Maps the English key used in PRESETS → Spanish display label for buttons.
+# Keys are used as stable session-state identifiers; only display changes.
+_PRESET_LABELS_ES: dict = {
+    # ── Top level ──────────────────────────────────────────
+    "🎨 Custom":                       "🎨 Personalizado",
+    "🤖 Artificial Intelligence":      "🤖 Inteligencia Artificial",
+    "💻 Cybersecurity":                "💻 Ciberseguridad",
+    "📊 Data Science":                 "📊 Ciencia de Datos",
+    "⚖️ Law":                          "⚖️ Derecho",
+    "🌍 Climate Change":               "🌍 Cambio Climático",
+    "💰 Personal Finance":             "💰 Finanzas Personales",
+    "⚕️ Nutrition & Health":           "⚕️ Nutrición y Salud",
+    "🏋️ Fitness & Exercise":           "🏋️ Fitness y Ejercicio",
+    "🧘 Mental Health":                "🧘 Salud Mental",
+    "🏥 Medicine & Healthcare":        "🏥 Medicina y Sanidad",
+    "🚀 Space Exploration":            "🚀 Exploración Espacial",
+    "🧬 Genetics & Genomics":          "🧬 Genética y Genómica",
+    "🏛️ History":                      "🏛️ Historia",
+    "🎮 Game Development":             "🎮 Desarrollo de Videojuegos",
+    "🍳 Cooking & Culinary Arts":      "🍳 Cocina y Artes Culinarias",
+    "🚗 Electric Vehicles & Automotive": "🚗 Vehículos Eléctricos y Automoción",
+    "🌿 Ecology & Environment":        "🌿 Ecología y Medio Ambiente",
+    "🔐 Blockchain & Crypto":          "🔐 Blockchain y Criptomonedas",
+    "🎵 Music Theory & Production":    "🎵 Teoría Musical y Producción",
+    "📱 Mobile App Development":       "📱 Desarrollo de Apps Móviles",
+    "🏗️ Architecture & Engineering":   "🏗️ Arquitectura e Ingeniería",
+    # ── AI sub-categories ──────────────────────────────────
+    "Machine Learning":                "Aprendizaje Automático",
+    "Natural Language Processing":     "Procesamiento del Lenguaje Natural",
+    "Computer Vision":                 "Visión Artificial",
+    "AI Ethics & Safety":              "Ética y Seguridad en IA",
+    "Deep Learning":                   "Aprendizaje Profundo",
+    "Reinforcement Learning":          "Aprendizaje por Refuerzo",
+    "MLOps":                           "MLOps",
+    "Large Language Models":           "Modelos de Lenguaje (LLM)",
+    "Text Classification & NER":       "Clasificación de Texto y NER",
+    "Speech & Audio NLP":              "NLP de Voz y Audio",
+    "Object Detection":                "Detección de Objetos",
+    "Image Generation":                "Generación de Imágenes",
+    "Medical Imaging":                 "Imágenes Médicas con IA",
+    "Bias & Fairness":                 "Sesgo y Equidad",
+    "AI Alignment":                    "Alineación de IA",
+    "AI Regulation":                   "Regulación de IA",
+    # ── Cybersecurity ──────────────────────────────────────
+    "Offensive Security":              "Seguridad Ofensiva",
+    "Defensive Security":              "Seguridad Defensiva",
+    "Cryptography":                    "Criptografía",
+    "Penetration Testing":             "Pruebas de Penetración",
+    "Social Engineering":              "Ingeniería Social",
+    "Malware Analysis":                "Análisis de Malware",
+    "Incident Response":               "Respuesta a Incidentes",
+    "Threat Intelligence":             "Inteligencia de Amenazas",
+    "Cloud Security":                  "Seguridad en la Nube",
+    "Symmetric & Asymmetric Encryption": "Cifrado Simétrico y Asimétrico",
+    "Post-Quantum Cryptography":       "Criptografía Poscuántica",
+    # ── Data Science ───────────────────────────────────────
+    "Statistics & Mathematics":        "Estadística y Matemáticas",
+    "Data Engineering":                "Ingeniería de Datos",
+    "Analytics & BI":                  "Analítica y BI",
+    "Bayesian Statistics":             "Estadística Bayesiana",
+    "A/B Testing":                     "Pruebas A/B",
+    "ETL & Pipelines":                 "ETL y Pipelines",
+    "Data Warehousing":                "Data Warehousing",
+    "Streaming & Real-Time":           "Streaming en Tiempo Real",
+    "Data Visualization":              "Visualización de Datos",
+    "Product Analytics":               "Analítica de Producto",
+    # ── Law ────────────────────────────────────────────────
+    "Family Law":                      "Derecho de Familia",
+    "Criminal Law":                    "Derecho Penal",
+    "Employment & Labour Law":         "Derecho Laboral",
+    "Corporate & Commercial Law":      "Derecho Mercantil",
+    "Immigration Law":                 "Derecho de Extranjería",
+    "Divorce":                         "Divorcio",
+    "Child Custody & Support":         "Custodia y Manutención Infantil",
+    "Adoption & Surrogacy":            "Adopción y Gestación Subrogada",
+    "Criminal Defence":                "Defensa Penal",
+    "White Collar Crime":              "Delitos Económicos",
+    "Sentencing & Parole":             "Sentencias y Libertad Condicional",
+    "Unfair Dismissal & Redundancy":   "Despido Improcedente y ERE",
+    "Workplace Discrimination":        "Discriminación Laboral",
+    "Trade Union & Collective":        "Sindicatos y Negociación Colectiva",
+    "Mergers & Acquisitions":          "Fusiones y Adquisiciones",
+    "Intellectual Property":           "Propiedad Intelectual",
+    "Contract Law":                    "Derecho Contractual",
+    "Asylum & Refugee Law":            "Derecho de Asilo y Refugio",
+    "Work & Skilled Visas":            "Visados de Trabajo",
+    "Citizenship & Naturalisation":    "Ciudadanía y Naturalización",
+    # ── Climate Change ─────────────────────────────────────
+    "Climate Science":                 "Ciencia Climática",
+    "Energy Transition":               "Transición Energética",
+    "Climate Policy":                  "Política Climática",
+    "Atmospheric Science":             "Ciencia Atmosférica",
+    "Ocean & Ice Science":             "Ciencia Oceánica y del Hielo",
+    "Extreme Weather":                 "Fenómenos Meteorológicos Extremos",
+    "Solar Energy":                    "Energía Solar",
+    "Wind Energy":                     "Energía Eólica",
+    "Energy Storage":                  "Almacenamiento de Energía",
+    "Carbon Markets":                  "Mercados de Carbono",
+    "International Agreements":        "Acuerdos Internacionales",
+    # ── Personal Finance ───────────────────────────────────
+    "Investing":                       "Inversión",
+    "Budgeting & Debt":                "Presupuesto y Deuda",
+    "Retirement Planning":             "Planificación de la Jubilación",
+    "Stock Market":                    "Mercado de Valores",
+    "Real Estate Investing":           "Inversión Inmobiliaria",
+    "Index Funds & ETFs":              "Fondos Indexados y ETFs",
+    "Debt Payoff":                     "Liquidación de Deudas",
+    "FIRE Movement":                   "Movimiento FIRE",
+    "401k & IRA":                      "Planes de Pensiones (EE.UU.)",
+    "Pension & UK Retirement":         "Pensión y Jubilación",
+    # ── Nutrition & Health ─────────────────────────────────
+    "Diets & Eating Patterns":         "Dietas y Patrones Alimentarios",
+    "Sports Nutrition":                "Nutrición Deportiva",
+    "Gut Health & Microbiome":         "Salud Intestinal y Microbioma",
+    "Ketogenic Diet":                  "Dieta Cetogénica",
+    "Mediterranean Diet":              "Dieta Mediterránea",
+    "Intermittent Fasting":            "Ayuno Intermitente",
+    "Protein & Muscle":                "Proteína y Músculo",
+    "Endurance Nutrition":             "Nutrición para Resistencia",
+    "Probiotics & Prebiotics":         "Probióticos y Prebióticos",
+    "IBS & Digestive Disorders":       "SII y Trastornos Digestivos",
+    # ── Fitness & Exercise ─────────────────────────────────
+    "Strength Training":               "Entrenamiento de Fuerza",
+    "Cardio & Endurance":              "Cardio y Resistencia",
+    "Recovery & Flexibility":          "Recuperación y Flexibilidad",
+    "Powerlifting":                    "Powerlifting",
+    "Bodybuilding":                    "Culturismo",
+    "Calisthenics":                    "Calistenia",
+    "Running":                         "Running",
+    "Cycling":                         "Ciclismo",
+    "HIIT":                            "HIIT",
+    "Mobility & Stretching":           "Movilidad y Estiramientos",
+    "Sleep & Recovery Science":        "Ciencia del Sueño y Recuperación",
+    # ── Mental Health ──────────────────────────────────────
+    "Therapy Approaches":              "Enfoques Terapéuticos",
+    "Mental Health Conditions":        "Condiciones de Salud Mental",
+    "Mindfulness & Stress":            "Mindfulness y Estrés",
+    "CBT":                             "TCC (Terapia Cognitivo-Conductual)",
+    "DBT":                             "TDC (Terapia Dialéctica Conductual)",
+    "ACT":                             "ACT (Terapia de Aceptación y Compromiso)",
+    "Anxiety Disorders":               "Trastornos de Ansiedad",
+    "Depression":                      "Depresión",
+    "ADHD":                            "TDAH",
+    "Meditation":                      "Meditación",
+    "Burnout":                         "Burnout",
+    # ── Medicine & Healthcare ──────────────────────────────
+    "Internal Medicine":               "Medicina Interna",
+    "Pharmacology":                    "Farmacología",
+    "Public Health":                   "Salud Pública",
+    "Cardiology":                      "Cardiología",
+    "Endocrinology":                   "Endocrinología",
+    "Pulmonology":                     "Neumología",
+    "Antibiotics & Antimicrobials":    "Antibióticos y Antimicrobianos",
+    "Drug Development":                "Desarrollo de Fármacos",
+    "Epidemiology":                    "Epidemiología",
+    "Vaccines & Immunology":           "Vacunas e Inmunología",
+    "Global Health":                   "Salud Global",
+    # ── Space Exploration ──────────────────────────────────
+    "Solar System":                    "Sistema Solar",
+    "Deep Space & Astrophysics":       "Espacio Profundo y Astrofísica",
+    "Space Technology":                "Tecnología Espacial",
+    "Mars Exploration":                "Exploración de Marte",
+    "Moon & Lunar Missions":           "Misiones Lunares",
+    "Asteroid & Comet Science":        "Asteroides y Cometas",
+    "Black Holes":                     "Agujeros Negros",
+    "Exoplanets":                      "Exoplanetas",
+    "Rocket Propulsion":               "Propulsión de Cohetes",
+    "Satellites & Constellations":     "Satélites y Constelaciones",
+    # ── Genetics & Genomics ────────────────────────────────
+    "Molecular Biology":               "Biología Molecular",
+    "Genomics & Sequencing":           "Genómica y Secuenciación",
+    "Genetic Engineering":             "Ingeniería Genética",
+    "Gene Expression":                 "Expresión Génica",
+    "Protein Structure":               "Estructura de Proteínas",
+    "Bioinformatics":                  "Bioinformática",
+    "Cancer Genomics":                 "Genómica del Cáncer",
+    "CRISPR":                          "CRISPR",
+    "Gene Therapy":                    "Terapia Génica",
+    # ── History ────────────────────────────────────────────
+    "Ancient History":                 "Historia Antigua",
+    "Medieval History":                "Historia Medieval",
+    "Modern History":                  "Historia Moderna",
+    "Ancient Greece":                  "Antigua Grecia",
+    "Ancient Rome":                    "Roma Antigua",
+    "Ancient Egypt":                   "Antiguo Egipto",
+    "Crusades":                        "Las Cruzadas",
+    "Islamic Golden Age":              "Época Dorada Islámica",
+    "World War II":                    "Segunda Guerra Mundial",
+    "Cold War":                        "Guerra Fría",
+    "Decolonisation":                  "Descolonización",
+    # ── Game Development ───────────────────────────────────
+    "Game Engines":                    "Motores de Juego",
+    "Game Design":                     "Diseño de Juegos",
+    "Unity":                           "Unity",
+    "Unreal Engine":                   "Unreal Engine",
+    "Godot":                           "Godot",
+    # ── Cooking & Culinary Arts ────────────────────────────
+    "Cooking Techniques":              "Técnicas Culinarias",
+    "Baking & Pastry":                 "Repostería y Pastelería",
+    "World Cuisines":                  "Cocinas del Mundo",
+    "French Techniques":               "Técnicas Francesas",
+    "Fermentation":                    "Fermentación",
+    "Molecular Gastronomy":            "Gastronomía Molecular",
+    "Bread Baking":                    "Panadería",
+    "Chocolate & Confectionery":       "Chocolate y Confitería",
+    "Japanese Cuisine":                "Cocina Japonesa",
+    "Indian Cuisine":                  "Cocina India",
+    # ── EV & Automotive ────────────────────────────────────
+    "EV Technology":                   "Tecnología de VE",
+    "Autonomous Driving":              "Conducción Autónoma",
+    "Battery Systems":                 "Sistemas de Baterías",
+    "Charging Infrastructure":         "Infraestructura de Carga",
+    "Sensor Systems":                  "Sistemas de Sensores",
+    "AI & Path Planning":              "IA y Planificación de Rutas",
+    # ── Ecology & Environment ──────────────────────────────
+    "Biodiversity & Conservation":     "Biodiversidad y Conservación",
+    "Pollution & Waste":               "Contaminación y Residuos",
+    "Rewilding":                       "Rewilding",
+    "Marine Conservation":             "Conservación Marina",
+    "Plastic Pollution":               "Contaminación Plástica",
+    "Air Quality":                     "Calidad del Aire",
+    # ── Blockchain & Crypto ────────────────────────────────
+    "Cryptocurrencies":                "Criptomonedas",
+    "DeFi":                            "DeFi",
+    "Bitcoin":                         "Bitcoin",
+    "Ethereum & Smart Contracts":      "Ethereum y Contratos Inteligentes",
+    "Lending & Borrowing":             "Préstamos y Créditos DeFi",
+    "DEX & AMM":                       "DEX y AMM",
+    # ── Music Theory & Production ──────────────────────────
+    "Music Theory":                    "Teoría Musical",
+    "Audio Production":                "Producción de Audio",
+    "Harmony & Chords":                "Armonía y Acordes",
+    "Counterpoint":                    "Contrapunto",
+    "Ear Training":                    "Entrenamiento Auditivo",
+    "Mixing":                          "Mezcla y Masterización",
+    "Sound Synthesis":                 "Síntesis de Sonido",
+    # ── Mobile App Development ─────────────────────────────
+    "iOS Development":                 "Desarrollo iOS",
+    "Android Development":             "Desarrollo Android",
+    "Cross-Platform":                  "Multiplataforma",
+    "SwiftUI":                         "SwiftUI",
+    "Core Data & Persistence":         "Core Data y Persistencia",
+    "Jetpack Compose":                 "Jetpack Compose",
+    "Kotlin Coroutines":               "Coroutines de Kotlin",
+    "React Native":                    "React Native",
+    "Flutter":                         "Flutter",
+    # ── Architecture & Engineering ─────────────────────────
+    "Structural Engineering":          "Ingeniería Estructural",
+    "Sustainable Design":              "Diseño Sostenible",
+    "Urban Planning":                  "Urbanismo",
+    "Seismic Design":                  "Diseño Sísmico",
+    "Materials Science":               "Ciencia de Materiales",
+    "Passive House":                   "Casa Pasiva (Passivhaus)",
+    "Net Zero Buildings":              "Edificios de Emisiones Netas Cero",
+    "Smart Cities":                    "Ciudades Inteligentes",
+    "Housing & Density":               "Vivienda y Densidad Urbana",
+}
+
+# Spanish subject / desc / kws for preset nodes.
+# Used instead of English values when LANGUAGE=es and user picks a preset.
+_PRESET_META_ES: dict = {
+    "🎨 Custom":                    {"subject": "", "desc": "", "kws": ""},
+    "🤖 Artificial Intelligence":   {"subject": "inteligencia artificial", "desc": "inteligencia artificial, aprendizaje automático y deep learning", "kws": "inteligencia artificial,aprendizaje automático,deep learning,redes neuronales,LLM,transformers,GPT"},
+    "Machine Learning":             {"subject": "aprendizaje automático", "desc": "algoritmos de aprendizaje automático, entrenamiento y evaluación de modelos", "kws": "aprendizaje automático,aprendizaje supervisado,no supervisado,gradiente descendente,sobreajuste,validación cruzada"},
+    "Deep Learning":                {"subject": "aprendizaje profundo", "desc": "redes neuronales profundas, CNN, RNN y transformers", "kws": "aprendizaje profundo,red neuronal,CNN,RNN,transformer,retropropagación,GPU,PyTorch,TensorFlow"},
+    "Reinforcement Learning":       {"subject": "aprendizaje por refuerzo", "desc": "aprendizaje por refuerzo, agentes y optimización de recompensas", "kws": "aprendizaje por refuerzo,Q-learning,gradiente de política,recompensa,agente,entorno,PPO,DQN"},
+    "Natural Language Processing":  {"subject": "procesamiento del lenguaje natural", "desc": "PLN, análisis de texto y modelos de lenguaje", "kws": "PLN,clasificación de texto,reconocimiento de entidades,análisis de sentimientos,tokenización,BERT,GPT,modelo de lenguaje"},
+    "Large Language Models":        {"subject": "modelos de lenguaje de gran escala", "desc": "LLMs, ingeniería de prompts y ajuste fino", "kws": "LLM,GPT-4,Claude,Llama,ingeniería de prompts,ajuste fino,RAG,RLHF,ajuste por instrucciones"},
+    "Computer Vision":              {"subject": "visión artificial", "desc": "visión por computador, reconocimiento de imágenes e IA visual", "kws": "visión artificial,clasificación de imágenes,detección de objetos,segmentación,CNN,YOLO,OpenCV,generación de imágenes"},
+    "AI Ethics & Safety":           {"subject": "ética y seguridad en IA", "desc": "ética en IA, sesgo, equidad e IA responsable", "kws": "ética IA,sesgo,equidad,explicabilidad,responsabilidad,transparencia,seguridad IA,alineación,regulación"},
+    "💻 Cybersecurity":             {"subject": "ciberseguridad", "desc": "ciberseguridad, hacking ético y defensa digital", "kws": "ciberseguridad,hacking,malware,firewall,cifrado,phishing,zero-day,pentesting,SIEM"},
+    "Penetration Testing":          {"subject": "pruebas de penetración", "desc": "pentesting web, red y aplicaciones", "kws": "pentesting,hacking ético,aplicación web,inyección SQL,XSS,OWASP,Burp Suite,escalada de privilegios"},
+    "📊 Data Science":              {"subject": "ciencia de datos", "desc": "ciencia de datos, estadística y pipelines de machine learning", "kws": "ciencia de datos,pandas,estadística,regresión,clasificación,ingeniería de características,EDA,Jupyter,SQL"},
+    "Statistics & Mathematics":     {"subject": "estadística para ciencia de datos", "desc": "métodos estadísticos, probabilidad y fundamentos matemáticos", "kws": "estadística,probabilidad,prueba de hipótesis,bayesiano,regresión,distribución,intervalo de confianza,prueba A/B"},
+    "⚖️ Law":                       {"subject": "derecho", "desc": "principios jurídicos, jurisprudencia y práctica legal", "kws": "derecho,legal,tribunal,jurisdicción,ley,precedente,litigio,abogado,derechos"},
+    "Family Law":                   {"subject": "derecho de familia", "desc": "derecho de familia, relaciones familiares y bienestar infantil", "kws": "derecho de familia,divorcio,custodia,manutención infantil,adopción,violencia doméstica,tutela,bienes gananciales"},
+    "Divorce":                      {"subject": "divorcio", "desc": "procedimientos de divorcio, causas y acuerdos económicos", "kws": "divorcio,separación,causas del divorcio,liquidación económica,bienes gananciales,acuerdo de separación,pensión compensatoria,convenio regulador"},
+    "Child Custody & Support":      {"subject": "custodia y manutención infantil", "desc": "régimen de custodia, planes de parentalidad y pensión alimenticia", "kws": "custodia infantil,guarda y custodia,régimen de visitas,pensión alimenticia,interés superior del menor,custodia compartida,patria potestad,mediación familiar"},
+    "Adoption & Surrogacy":         {"subject": "adopción y gestación subrogada", "desc": "procedimientos de adopción, gestación subrogada y derechos parentales", "kws": "adopción,gestación subrogada,maternidad subrogada,derechos parentales,acogimiento,adopción internacional,filiación"},
+    "Criminal Law":                 {"subject": "derecho penal", "desc": "delitos, procedimiento penal y defensa", "kws": "derecho penal,delito,acusación,defensa,sentencia,prisión preventiva,juicio oral,jurado,más allá de toda duda razonable"},
+    "Employment & Labour Law":      {"subject": "derecho laboral", "desc": "derechos laborales, conflictos laborales y relaciones colectivas", "kws": "derecho laboral,despido improcedente,ERE,discriminación,tribunal laboral,convenio colectivo,sindicato,salario,contrato"},
+    "Corporate & Commercial Law":   {"subject": "derecho mercantil", "desc": "derecho societario, contratos y transacciones comerciales", "kws": "derecho mercantil,sociedad,administrador,accionista,contrato,fusiones y adquisiciones,propiedad intelectual,due diligence,estatutos"},
+    "Immigration Law":              {"subject": "derecho de extranjería", "desc": "visados, asilo, ciudadanía y procedimiento de extranjería", "kws": "extranjería,visado,asilo,refugiado,deportación,ciudadanía,naturalización,permiso de residencia,extranjero"},
+    "Intellectual Property":        {"subject": "propiedad intelectual", "desc": "patentes, marcas, derechos de autor y protección de la PI", "kws": "propiedad intelectual,patente,marca registrada,derechos de autor,secreto comercial,licencia,infracción,OEPM,diseño industrial"},
+    "Contract Law":                 {"subject": "derecho contractual", "desc": "formación de contratos, incumplimiento y remedios", "kws": "contrato,oferta,aceptación,causa,incumplimiento,daños y perjuicios,cumplimiento específico,resolución,vicios del consentimiento"},
+    "🌍 Climate Change":            {"subject": "cambio climático", "desc": "ciencia climática, calentamiento global y política ambiental", "kws": "cambio climático,calentamiento global,CO2,gas de efecto invernadero,IPCC,carbono,energías renovables"},
+    "Solar Energy":                 {"subject": "energía solar", "desc": "fotovoltaica, instalaciones solares y tecnología solar", "kws": "solar,fotovoltaico,panel solar,instalación solar,inversor,LCOE,autoconsumo,energía solar concentrada,perovskita"},
+    "Wind Energy":                  {"subject": "energía eólica", "desc": "energía eólica terrestre y marina", "kws": "energía eólica,aerogenerador,eólica marina,eólica terrestre,factor de capacidad,parque eólico,LCOE,pala"},
+    "💰 Personal Finance":          {"subject": "finanzas personales", "desc": "finanzas personales, inversión, presupuesto y gestión patrimonial", "kws": "inversión,acciones,bonos,ETF,presupuesto,ahorro,jubilación,interés compuesto"},
+    "Investing":                    {"subject": "inversión", "desc": "bolsa de valores, bonos y estrategias de inversión", "kws": "inversión,acciones,bonos,ETF,fondo indexado,cartera,diversificación,asignación de activos,rentabilidad"},
+    "Mediterranean Diet":           {"subject": "dieta mediterránea", "desc": "alimentación mediterránea, aceite de oliva e investigación sobre longevidad", "kws": "dieta mediterránea,aceite de oliva,pescado,legumbres,cereales integrales,antioxidantes,longevidad,salud cardiovascular"},
+    "⚕️ Nutrition & Health":        {"subject": "nutrición y salud", "desc": "ciencia nutricional, alimentación saludable y salud preventiva", "kws": "nutrición,dieta,vitaminas,proteínas,carbohidratos,metabolismo,salud intestinal,suplementos"},
+    "🏋️ Fitness & Exercise":        {"subject": "fitness y ejercicio", "desc": "fitness, ciencia del ejercicio y rendimiento deportivo", "kws": "ejercicio,entrenamiento de fuerza,cardio,HIIT,músculo,recuperación,VO2 máximo,flexibilidad,rendimiento deportivo"},
+    "Strength Training":            {"subject": "entrenamiento de fuerza", "desc": "entrenamiento de resistencia, sobrecarga progresiva e hipertrofia", "kws": "entrenamiento de fuerza,sobrecarga progresiva,powerlifting,hipertrofia,1RM,ejercicios compuestos,periodización"},
+    "🧘 Mental Health":             {"subject": "salud mental", "desc": "salud mental, psicología y bienestar", "kws": "salud mental,ansiedad,depresión,terapia,TCC,mindfulness,estrés,psiquiatría,resiliencia"},
+    "CBT":                          {"subject": "terapia cognitivo-conductual", "desc": "técnicas de TCC, registros de pensamiento y activación conductual", "kws": "TCC,distorsiones cognitivas,registro de pensamiento,activación conductual,exposición,formulación,pensamientos automáticos"},
+    "Anxiety Disorders":            {"subject": "trastornos de ansiedad", "desc": "ansiedad generalizada, trastorno de pánico, fobias y tratamiento", "kws": "ansiedad,trastorno de pánico,TAG,ansiedad social,fobia,agorafobia,terapia de exposición,preocupación"},
+    "Depression":                   {"subject": "depresión", "desc": "depresión mayor, distimia, causas y tratamiento", "kws": "depresión,TDM,antidepresivo,ISRS,anhedonia,estado de ánimo bajo,terapia cognitiva,biológico,psicosocial"},
+    "🏥 Medicine & Healthcare":     {"subject": "medicina y sanidad", "desc": "medicina, práctica clínica y sistemas sanitarios", "kws": "medicina,diagnóstico,tratamiento,ensayo clínico,farmacología,cirugía,epidemiología,sistema sanitario,OMS"},
+    "Public Health":                {"subject": "salud pública", "desc": "epidemiología, vacunación y salud global", "kws": "salud pública,epidemiología,vacuna,pandemia,vigilancia epidemiológica,incidencia,prevalencia,determinantes sociales,OMS"},
+    "🚀 Space Exploration":         {"subject": "exploración espacial", "desc": "ciencia espacial, astronomía y misiones espaciales", "kws": "NASA,SpaceX,Marte,luna,cohete,satélite,asteroide,telescopio,cosmología"},
+    "Mars Exploration":             {"subject": "exploración de Marte", "desc": "misiones a Marte, geología marciana y futuros asentamientos", "kws": "Marte,rover,Perseverance,Curiosity,terraformación,muestra de Marte,habitabilidad,metano"},
+    "🧬 Genetics & Genomics":       {"subject": "genética y genómica", "desc": "genética, genómica y biología molecular", "kws": "ADN,gen,genoma,mutación,CRISPR,herencia,cromosoma,proteína,ARN"},
+    "CRISPR":                       {"subject": "edición génica CRISPR", "desc": "mecanismos CRISPR-Cas9, entrega y aplicaciones", "kws": "CRISPR,Cas9,ARN guía,HDR,NHEJ,editor de bases,edición primaria,fuera de objetivo,entrega,in vivo"},
+    "🏛️ History":                   {"subject": "historia", "desc": "historia mundial, civilizaciones y eventos históricos", "kws": "historia,civilización,guerra,imperio,revolución,arqueología,antigüedad,medieval,historia moderna"},
+    "Ancient Greece":               {"subject": "Antigua Grecia", "desc": "ciudades-estado griegas, filosofía, democracia y cultura", "kws": "Grecia,Atenas,Esparta,democracia,filosofía,Sócrates,Platón,Aristóteles,Guerra del Peloponeso,helenístico"},
+    "World War II":                 {"subject": "Segunda Guerra Mundial", "desc": "causas de la Segunda Guerra Mundial, batallas principales y consecuencias", "kws": "Segunda Guerra Mundial,Hitler,Churchill,Día D,Holocausto,Guerra del Pacífico,bomba atómica,Normandía,frente oriental"},
+    "🎮 Game Development":          {"subject": "desarrollo de videojuegos", "desc": "desarrollo de videojuegos, diseño de juegos y motores gráficos", "kws": "Unity,Unreal Engine,diseño de juegos,mecánicas,shader,motor de física,generación procedural,juego indie"},
+    "🍳 Cooking & Culinary Arts":   {"subject": "cocina y artes culinarias", "desc": "técnicas culinarias, recetas y ciencia de los alimentos", "kws": "cocina,receta,repostería,fermentación,habilidades con el cuchillo,reacción de Maillard,pastelería,cuisine,maridaje de sabores"},
+    "Mediterranean Diet":           {"subject": "dieta mediterránea", "desc": "cocina mediterránea, ingredientes y técnicas regionales", "kws": "cocina mediterránea,aceite de oliva,pescado,legumbres,cereales,especias,longevidad,dieta española"},
+    "🚗 Electric Vehicles & Automotive": {"subject": "vehículos eléctricos y automoción", "desc": "vehículos eléctricos, tecnología del automóvil y transporte", "kws": "vehículo eléctrico,VE,batería,Tesla,carga,autonomía,conducción autónoma,litio,par motor"},
+    "🌿 Ecology & Environment":     {"subject": "ecología y medio ambiente", "desc": "ecología, biodiversidad y ciencias medioambientales", "kws": "ecología,biodiversidad,ecosistema,conservación,deforestación,especies,hábitat,contaminación,rewilding"},
+    "🔐 Blockchain & Crypto":       {"subject": "blockchain y criptomonedas", "desc": "tecnología blockchain, criptomonedas y finanzas descentralizadas", "kws": "blockchain,Bitcoin,Ethereum,DeFi,contrato inteligente,NFT,consenso,monedero,Web3"},
+    "Bitcoin":                      {"subject": "Bitcoin", "desc": "protocolo Bitcoin, minería y reserva de valor", "kws": "Bitcoin,BTC,minería,SHA-256,halving,Lightning Network,UTXO,mempool,nodo completo,Satoshi Nakamoto"},
+    "🎵 Music Theory & Production": {"subject": "teoría musical y producción", "desc": "teoría musical, composición y producción de audio", "kws": "teoría musical,armonía,progresión de acordes,mezcla,masterización,DAW,síntesis,arreglos,entrenamiento auditivo"},
+    "📱 Mobile App Development":    {"subject": "desarrollo de aplicaciones móviles", "desc": "desarrollo de apps iOS y Android, React Native y Flutter", "kws": "iOS,Android,React Native,Flutter,Swift,Kotlin,UI móvil,App Store,notificaciones push"},
+    "🏗️ Architecture & Engineering": {"subject": "arquitectura e ingeniería", "desc": "arquitectura, ingeniería estructural y construcción", "kws": "arquitectura,ingeniería estructural,BIM,AutoCAD,estructura portante,cimentación,diseño sostenible,HVAC"},
+    "Smart Cities":                 {"subject": "ciudades inteligentes", "desc": "IoT, datos y tecnología para la gestión urbana", "kws": "ciudad inteligente,IoT,sensores,plataforma de datos,movilidad,gemelo digital,gestión del tráfico,red energética,ciudadano"},
+    "Passive House":                {"subject": "casa pasiva (Passivhaus)", "desc": "estándar Passivhaus, envolvente térmica y eficiencia energética", "kws": "casa pasiva,Passivhaus,PHPP,estanqueidad al aire,puente térmico,MVHR,triple acristalamiento,demanda de calefacción"},
+}
+
+def preset_label(key: str) -> str:
+    """Return display label for a preset key, translated when UI is Spanish."""
+    if ui_lang == "es":
+        return _PRESET_LABELS_ES.get(key, key)
+    return key
+
+def get_preset_meta(node: dict, key: str = "") -> dict:
+    """Return subject/desc/kws for the active language."""
+    if ui_lang == "es" and key in _PRESET_META_ES:
+        return _PRESET_META_ES[key]
+    return {
+        "subject": node.get("_subject", ""),
+        "desc":    node.get("_desc", ""),
+        "kws":     node.get("_kws", ""),
+    }
+
+
 # ── Navigation ────────────────────────────────────────────────────────────────
 configured = is_configured()
 raw_n   = count_json(ROOT / "data" / "raw")
@@ -165,22 +831,42 @@ proc_n  = count_json(ROOT / "data" / "processed")
 default_page = "Setup" if not configured else "Home"
 
 with st.sidebar:
-    st.markdown("## 🧠 AI SME")
+    # ── Language toggle (top, immediate effect) ───────────────────────────────
+    _lang_col1, _lang_col2 = st.columns(2)
+    with _lang_col1:
+        if st.button("🇬🇧 English", use_container_width=True,
+                     type="primary" if ui_lang == "en" else "secondary"):
+            if ui_lang != "en":
+                write_env({"LANGUAGE": "en"})
+                st.rerun()
+    with _lang_col2:
+        if st.button("🇪🇸 Español", use_container_width=True,
+                     type="primary" if ui_lang == "es" else "secondary"):
+            if ui_lang != "es":
+                write_env({"LANGUAGE": "es"})
+                st.rerun()
+    st.markdown("---")
+
+    st.markdown(f"## 🧠 {t('app_title')}")
     subject = get_env("SUBJECT", "—")
-    st.caption(f"Subject: **{subject}**")
+    st.caption(f"{t('subject_label')} **{subject}**")
     st.markdown("---")
 
-    pages = ["Home", "Chat", "Pipeline", "Knowledge Base", "Dataset", "Setup", "About"]
+    page_keys = ["Home", "Chat", "Pipeline", "Knowledge Base", "Dataset", "Setup", "About"]
+    page_labels = [
+        t("nav_home"), t("nav_chat"), t("nav_pipeline"),
+        t("nav_kb"), t("nav_dataset"), t("nav_setup"), t("nav_about"),
+    ]
     icons  = ["🏠", "💬", "⚙️", "🔍", "📦", "🛠️", "👤"]
-    labels = [f"{i}  {p}" for i, p in zip(icons, pages)]
+    labels = [f"{i}  {p}" for i, p in zip(icons, page_labels)]
 
-    default_idx = pages.index(default_page)
+    default_idx = page_keys.index(default_page)
     choice = st.radio("", labels, index=default_idx, label_visibility="collapsed")
-    page = pages[labels.index(choice)]
+    page = page_keys[labels.index(choice)]
 
     st.markdown("---")
-    st.caption(f"Raw docs: **{raw_n:,}**")
-    st.caption(f"Processed: **{proc_n:,}**")
+    st.caption(f"{t('raw_docs')} **{raw_n:,}**")
+    st.caption(f"{t('processed')} **{proc_n:,}**")
     if configured:
         provider = (
             "Anthropic" if get_env("ANTHROPIC_API_KEY") else
@@ -189,19 +875,19 @@ with st.sidebar:
         )
         st.caption(f"LLM: **{provider}**")
     else:
-        st.caption("⚠️ Not configured")
+        st.caption(t("not_configured"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SETUP PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 if page == "Setup":
-    st.markdown('<div class="page-title">🛠️ Setup</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Configure once — everything else happens inside the app.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("setup_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("setup_sub")}</div>', unsafe_allow_html=True)
 
     # ── Step 1: LLM ──────────────────────────────────────────────────────────
-    st.markdown("### Step 1 — LLM API Key")
-    st.markdown("The AI needs an LLM to generate search queries, extract knowledge, and answer questions.")
+    st.markdown(f"### {t('step1_title')}")
+    st.markdown(t("step1_desc"))
 
     provider = st.radio(
         "Provider",
@@ -239,8 +925,8 @@ if page == "Setup":
     st.markdown("---")
 
     # ── Step 2: Subject ───────────────────────────────────────────────────────
-    st.markdown("### Step 2 — Choose a Subject")
-    st.markdown("Click a category to select it, or drill down up to 3 levels for a specialty. You can save at any level.")
+    st.markdown(f"### {t('step2_title')}")
+    st.markdown(t("step2_desc"))
 
     # Each node: _subject/_desc/_kws = this level's config; other keys = subcategories
     PRESETS = {
@@ -816,13 +1502,6 @@ if page == "Setup":
         },
     }
 
-    def _get_meta(node: dict) -> dict:
-        return {
-            "subject": node.get("_subject", ""),
-            "desc":    node.get("_desc", ""),
-            "kws":     node.get("_kws", ""),
-        }
-
     def _get_subcats(node: dict) -> dict:
         return {k: v for k, v in node.items() if not k.startswith("_")}
 
@@ -832,11 +1511,11 @@ if page == "Setup":
     l3 = st.session_state.get("preset_l3")
 
     cols = st.columns(5)
-    for i, label in enumerate(PRESETS):
+    for i, key in enumerate(PRESETS):
         with cols[i % 5]:
-            btn_type = "primary" if l1 == label else "secondary"
-            if st.button(label, key=f"l1_{label}", use_container_width=True, type=btn_type):
-                st.session_state["preset_l1"] = label
+            btn_type = "primary" if l1 == key else "secondary"
+            if st.button(preset_label(key), key=f"l1_{key}", use_container_width=True, type=btn_type):
+                st.session_state["preset_l1"] = key
                 st.session_state.pop("preset_l2", None)
                 st.session_state.pop("preset_l3", None)
                 st.rerun()
@@ -845,13 +1524,14 @@ if page == "Setup":
     if l1 and l1 in PRESETS:
         subcats_l2 = _get_subcats(PRESETS[l1])
         if subcats_l2:
-            st.markdown(f"**{l1}** — choose a specialty (or save at this level):")
+            _drill = t("step2_desc").split(".")[0]  # short hint
+            st.markdown(f"**{preset_label(l1)}** — {t('step2_desc').split('.')[0].lower()}:")
             cols2 = st.columns(min(5, len(subcats_l2)))
-            for i, label in enumerate(subcats_l2):
+            for i, key in enumerate(subcats_l2):
                 with cols2[i % 5]:
-                    btn_type = "primary" if l2 == label else "secondary"
-                    if st.button(label, key=f"l2_{label}", use_container_width=True, type=btn_type):
-                        st.session_state["preset_l2"] = label
+                    btn_type = "primary" if l2 == key else "secondary"
+                    if st.button(preset_label(key), key=f"l2_{key}", use_container_width=True, type=btn_type):
+                        st.session_state["preset_l2"] = key
                         st.session_state.pop("preset_l3", None)
                         st.rerun()
 
@@ -861,44 +1541,66 @@ if page == "Setup":
         if l2 in subcats_l2:
             subcats_l3 = _get_subcats(subcats_l2[l2])
             if subcats_l3:
-                st.markdown(f"**{l1} → {l2}** — drill down further (or save at this level):")
+                st.markdown(f"**{preset_label(l1)} → {preset_label(l2)}**:")
                 cols3 = st.columns(min(5, len(subcats_l3)))
-                for i, label in enumerate(subcats_l3):
+                for i, key in enumerate(subcats_l3):
                     with cols3[i % 5]:
-                        btn_type = "primary" if l3 == label else "secondary"
-                        if st.button(label, key=f"l3_{label}", use_container_width=True, type=btn_type):
-                            st.session_state["preset_l3"] = label
+                        btn_type = "primary" if l3 == key else "secondary"
+                        if st.button(preset_label(key), key=f"l3_{key}", use_container_width=True, type=btn_type):
+                            st.session_state["preset_l3"] = key
                             st.rerun()
 
     # ── Resolve active preset ─────────────────────────────────────────────────
     active_data = {"subject": "", "desc": "", "kws": ""}
     if l1 and l1 in PRESETS:
-        active_data = _get_meta(PRESETS[l1])
+        active_data = get_preset_meta(PRESETS[l1], l1)
         subcats_l2 = _get_subcats(PRESETS[l1])
         if l2 and l2 in subcats_l2:
-            active_data = _get_meta(subcats_l2[l2])
+            active_data = get_preset_meta(subcats_l2[l2], l2)
             subcats_l3 = _get_subcats(subcats_l2[l2])
             if l3 and l3 in subcats_l3:
-                active_data = _get_meta(subcats_l3[l3])
+                active_data = get_preset_meta(subcats_l3[l3], l3)
 
-    # Breadcrumb
-    breadcrumb = " → ".join(p for p in [l1, l2, l3] if p)
+    # Breadcrumb — show translated labels
+    breadcrumb = " → ".join(preset_label(p) for p in [l1, l2, l3] if p)
     if breadcrumb:
-        st.markdown(f"**Selected:** {breadcrumb}")
+        st.markdown(f"**{t('selected')}** {breadcrumb}")
     st.markdown("---")
 
     cur_subject = get_env("SUBJECT", active_data["subject"])
     cur_desc    = get_env("SUBJECT_DESCRIPTION", active_data["desc"])
     cur_kws     = get_env("SUBJECT_KEYWORDS", active_data["kws"])
 
-    subject_val = st.text_input("Subject name", value=active_data["subject"] or cur_subject)
-    desc_val    = st.text_input("Description",  value=active_data["desc"] or cur_desc)
-    kws_val     = st.text_input("Keywords (comma-separated)", value=active_data["kws"] or cur_kws)
+    subject_val = st.text_input(t("subject_name"), value=active_data["subject"] or cur_subject)
+    desc_val    = st.text_input(t("description"),  value=active_data["desc"] or cur_desc)
+    kws_val     = st.text_input(t("keywords"), value=active_data["kws"] or cur_kws)
+
+    st.markdown("---")
+
+    # ── Step 3: Region ────────────────────────────────────────────────────────
+    st.markdown(f"### {t('step3_title')}")
+    st.markdown(t("step3_desc"))
+
+    region_options = [
+        t("region_anywhere"),
+        t("region_spain"),
+        t("region_catalunya"),
+        t("region_europe"),
+    ]
+    region_values = ["anywhere", "spain", "catalunya", "europe"]
+    cur_region = get_env("REGION", "anywhere")
+    region_idx = region_values.index(cur_region) if cur_region in region_values else 0
+    region_sel = st.selectbox(
+        t("region_label"),
+        region_options,
+        index=region_idx,
+    )
+    region_val = region_values[region_options.index(region_sel)]
 
     st.markdown("---")
 
     # ── Save ──────────────────────────────────────────────────────────────────
-    if st.button("💾  Save Configuration", type="primary", use_container_width=True):
+    if st.button(t("save_btn"), type="primary", use_container_width=True):
         updates = {}
         if api_key:
             updates[env_key] = api_key
@@ -908,17 +1610,18 @@ if page == "Setup":
             updates["SUBJECT_DESCRIPTION"] = desc_val
         if kws_val:
             updates["SUBJECT_KEYWORDS"] = kws_val
+        updates["REGION"] = region_val
 
         if not updates.get(env_key) and not get_env(env_key):
-            st.error("Please enter your API key.")
+            st.error(t("save_no_key"))
         else:
             write_env(updates)
-            st.success("Configuration saved!")
+            st.success(t("save_ok"))
             time.sleep(0.8)
             st.rerun()
 
     if is_configured():
-        st.info("Configuration is complete. Go to **Pipeline** to start researching, or **Chat** to talk to your expert.")
+        st.info(t("setup_done"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -930,7 +1633,7 @@ elif page == "Home":
     st.markdown(f'<div class="page-sub">{get_env("SUBJECT_DESCRIPTION", subject)}</div>', unsafe_allow_html=True)
 
     if not configured:
-        st.warning("Not configured yet. Go to **Setup** to add your API key and choose a subject.")
+        st.warning(t("not_configured_warn"))
 
     # Stats
     stats = kb_stats()
@@ -944,70 +1647,73 @@ elif page == "Home":
                 f'<div class="metric-lbl">{label}</div></div>',
                 unsafe_allow_html=True,
             )
-    metric(c1, f"{raw_n:,}",     "Raw Documents")
-    metric(c2, f"{proc_n:,}",    "Processed")
-    metric(c3, f"{kb_total:,}",  "KB Chunks")
-    metric(c4, "Ready" if kb_total > 0 else "Empty", "Status",
+    metric(c1, f"{raw_n:,}",     t("raw_documents"))
+    metric(c2, f"{proc_n:,}",    t("processed_label"))
+    metric(c3, f"{kb_total:,}",  t("kb_chunks"))
+    metric(c4, t("kb_ready") if kb_total > 0 else t("kb_empty"), t("status"),
            "#16a34a" if kb_total > 0 else "#dc2626")
 
     st.markdown("---")
 
     # ── Quick start ───────────────────────────────────────────────────────────
     if kb_total == 0 and configured:
-        st.markdown("### Quick Start")
-        st.markdown("Build your knowledge base in one click:")
+        st.markdown(f"### {t('quick_start')}")
+        st.markdown(t("quick_start_desc"))
 
         col_left, col_right = st.columns([2, 1])
         with col_left:
-            qs_max   = st.number_input("Max documents to fetch", 10, 500, 50, step=10)
-            qs_fast  = st.checkbox("Fast mode (skip LLM structuring — much quicker)", value=False)
+            qs_max   = st.number_input(t("max_docs"), 10, 500, 50, step=10)
+            qs_fast  = st.checkbox(t("fast_mode"), value=False)
         with col_right:
             st.markdown("<br/>", unsafe_allow_html=True)
-            run_all = st.button("🚀  Build Everything", type="primary", use_container_width=True)
+            run_all = st.button(t("build_everything"), type="primary", use_container_width=True)
 
         if run_all:
+            _lang = get_env("LANGUAGE", "en")
+            _region = get_env("REGION", "anywhere")
             log_ph = st.empty()
             with st.spinner(""):
-                st.markdown("**Step 1/3 — Researching the web...**")
+                st.markdown(t("step1_research"))
                 rc = stream_command(
-                    ["scripts/research.py", "--max", str(qs_max)], log_ph
+                    ["scripts/research.py", "--max", str(qs_max),
+                     "--language", _lang, "--region", _region], log_ph
                 )
                 if rc != 0:
-                    st.error("Research step failed.")
+                    st.error(t("research_failed"))
                     st.stop()
 
-                st.markdown("**Step 2/3 — Processing documents...**")
+                st.markdown(t("step2_process"))
                 cmd = ["scripts/process_data.py"]
                 if qs_fast:
                     cmd.append("--no-structure")
                 rc = stream_command(cmd, log_ph)
                 if rc != 0:
-                    st.error("Processing step failed.")
+                    st.error(t("process_failed"))
                     st.stop()
 
-                st.markdown("**Step 3/3 — Building knowledge base...**")
+                st.markdown(t("step3_build"))
                 rc = stream_command(["scripts/build_rag.py"], log_ph)
 
             if rc == 0:
-                st.success("Knowledge base is ready! Go to Chat to start asking questions.")
+                st.success(t("kb_ready_msg"))
                 st.balloons()
                 st.cache_resource.clear()
 
     elif kb_total > 0:
-        st.markdown("### Knowledge Base")
+        st.markdown(t("kb_section_header"))
         c1, c2, c3 = st.columns(3)
-        with c1: st.metric("Documents", f"{stats.get('documents',0):,} chunks")
-        with c2: st.metric("Learnings",  f"{stats.get('learnings',0):,} chunks")
-        with c3: st.metric("Summaries",  f"{stats.get('summaries',0):,} chunks")
-        st.markdown("Your expert is ready. Go to **Chat** to ask questions.")
+        with c1: st.metric(t("kb_documents"), f"{stats.get('documents',0):,} {t('kb_chunks')}")
+        with c2: st.metric(t("kb_learnings"),  f"{stats.get('learnings',0):,} {t('kb_chunks')}")
+        with c3: st.metric(t("kb_summaries"),  f"{stats.get('summaries',0):,} {t('kb_chunks')}")
+        st.markdown(t("kb_ready_goto"))
 
     st.markdown("---")
-    st.markdown("### How It Works")
+    st.markdown(t("how_it_works"))
     steps = [
-        ("1", "Research", "AI generates smart queries → searches DuckDuckGo/Tavily → fetches pages + Wikipedia"),
-        ("2", "Process",  "Clean text, remove PII (names/emails/phones), extract structured knowledge with LLM"),
-        ("3", "Index",    "Embed documents into ChromaDB with multilingual sentence transformers"),
-        ("4", "Chat",     "Ask anything — grounded answers with cited sources"),
+        ("1", t("step_research"), t("step_research_desc")),
+        ("2", t("step_process"),  t("step_process_desc")),
+        ("3", t("step_index"),    t("step_index_desc")),
+        ("4", t("step_chat"),     t("step_chat_desc")),
     ]
     cols = st.columns(4)
     for col, (num, title, desc) in zip(cols, steps):
@@ -1031,15 +1737,15 @@ elif page == "Home":
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Chat":
     subject = get_env("SUBJECT", "your subject")
-    st.markdown(f'<div class="page-title">💬 Chat</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="page-sub">Ask anything about {subject}.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("chat_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("chat_sub").format(subject=subject)}</div>', unsafe_allow_html=True)
 
     if not configured:
-        st.error("Go to **Setup** to configure your API key first.")
+        st.error(t("chat_no_config"))
         st.stop()
 
     # Load agent (cached)
-    @st.cache_resource(show_spinner="Loading expert...")
+    @st.cache_resource(show_spinner=True)
     def load_agent():
         # Reload env into process so the agent picks up the keys
         env = read_env()
@@ -1056,7 +1762,7 @@ elif page == "Chat":
 
     kb_ready = agent._kb_ready
     if not kb_ready:
-        st.info("Knowledge base is empty — the agent will use general knowledge only. Go to **Pipeline** to build it.")
+        st.info(t("chat_no_kb"))
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -1066,7 +1772,7 @@ elif page == "Chat":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             if msg.get("sources"):
-                with st.expander(f"📚 {len(msg['sources'])} sources"):
+                with st.expander(f"📚 {t('sources').format(n=len(msg['sources']))}"):
                     for src in msg["sources"]:
                         url   = src.get("url", "")
                         title = src.get("title", "Source")
@@ -1084,18 +1790,18 @@ elif page == "Chat":
                             unsafe_allow_html=True,
                         )
 
-    if prompt := st.chat_input(f"Ask about {subject}..."):
+    if prompt := st.chat_input(t("chat_input").format(subject=subject)):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
+            with st.spinner(t("thinking")):
                 try:
                     answer, sources = agent.chat_with_sources(prompt)
                     st.markdown(answer)
                     if sources:
-                        with st.expander(f"📚 {len(sources)} sources"):
+                        with st.expander(f"📚 {t('sources').format(n=len(sources))}"):
                             for src in sources:
                                 url   = src.get("url", "")
                                 title = src.get("title", "Source")
@@ -1117,7 +1823,7 @@ elif page == "Chat":
                     st.error(f"Error: {e}")
 
     if st.session_state.messages:
-        if st.button("🗑️  Clear conversation"):
+        if st.button(t("clear_conv")):
             st.session_state.messages = []
             agent.reset()
             st.rerun()
@@ -1128,46 +1834,49 @@ elif page == "Chat":
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Pipeline":
     subject = get_env("SUBJECT", "your subject")
-    st.markdown(f'<div class="page-title">⚙️ Pipeline</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="page-sub">Build the knowledge base for <strong>{subject}</strong>.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("pipeline_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("pipeline_sub").format(subject=subject)}</div>', unsafe_allow_html=True)
 
     if not configured:
-        st.error("Go to **Setup** first.")
+        st.error(t("pipeline_no_config"))
         st.stop()
 
     # Status bar
     c1, c2, c3 = st.columns(3)
-    with c1: st.metric("Raw Documents", f"{raw_n:,}", delta="fetched")
-    with c2: st.metric("Processed", f"{proc_n:,}", delta="structured")
+    with c1: st.metric(t("pipeline_raw"), f"{raw_n:,}", delta=t("pipeline_fetched"))
+    with c2: st.metric(t("pipeline_processed"), f"{proc_n:,}", delta=t("pipeline_structured"))
     stats = kb_stats()
-    with c3: st.metric("KB Chunks", f"{sum(stats.values()):,}", delta="indexed")
+    with c3: st.metric(t("kb_chunks_label"), f"{sum(stats.values()):,}", delta=t("kb_indexed"))
 
     st.markdown("---")
 
     # ── One-click ────────────────────────────────────────────────────────────
-    with st.expander("🚀  **Build Everything** (recommended for first run)", expanded=True):
+    with st.expander(t("build_everything_exp"), expanded=True):
         col1, col2 = st.columns(2)
         with col1:
-            max_docs  = st.number_input("Max documents to fetch", 10, 1000, 100, step=10, key="be_max")
-            n_queries = st.number_input("AI search queries", 5, 30, 10, key="be_q")
+            max_docs  = st.number_input(t("max_docs"), 10, 1000, 100, step=10, key="be_max")
+            n_queries = st.number_input(t("ai_queries"), 5, 30, 10, key="be_q")
         with col2:
-            fast_mode  = st.checkbox("Fast mode (skip LLM structuring)", key="be_fast")
-            reprocess  = st.checkbox("Reprocess already-processed docs", key="be_reprocess")
-            rebuild    = st.checkbox("Force full rebuild of KB", key="be_rebuild")
+            fast_mode  = st.checkbox(t("fast_mode2"), key="be_fast")
+            reprocess  = st.checkbox(t("reprocess"), key="be_reprocess")
+            rebuild    = st.checkbox(t("rebuild"), key="be_rebuild")
 
-        if st.button("🚀  Build Everything", type="primary", use_container_width=True, key="be_btn"):
+        if st.button(t("build_everything"), type="primary", use_container_width=True, key="be_btn"):
             log_ph = st.empty()
             success = True
+            _lang = get_env("LANGUAGE", "en")
+            _region = get_env("REGION", "anywhere")
 
-            st.markdown("**① Researching the web and Wikipedia...**")
+            st.markdown(t("step_research_title"))
             rc = stream_command(
-                ["scripts/research.py", "--max", str(max_docs), "--queries", str(n_queries)],
+                ["scripts/research.py", "--max", str(max_docs), "--queries", str(n_queries),
+                 "--language", _lang, "--region", _region],
                 log_ph,
             )
             if rc != 0: success = False
 
             if success:
-                st.markdown("**② Processing documents (clean → PII → structure)...**")
+                st.markdown(t("step_process_title"))
                 cmd = ["scripts/process_data.py"]
                 if fast_mode:  cmd.append("--no-structure")
                 if reprocess:  cmd.append("--reprocess")
@@ -1175,53 +1884,56 @@ elif page == "Pipeline":
                 if rc != 0: success = False
 
             if success:
-                st.markdown("**③ Building knowledge base...**")
+                st.markdown(t("step_build_title"))
                 cmd = ["scripts/build_rag.py"]
                 if rebuild: cmd.append("--rebuild")
                 rc = stream_command(cmd, log_ph)
                 if rc != 0: success = False
 
             if success:
-                st.success("Done! Your expert is ready. Go to **Chat**.")
+                st.success(t("done_msg"))
                 st.balloons()
                 st.cache_resource.clear()
             else:
-                st.error("A step failed. Check the log above.")
+                st.error(t("step_failed"))
 
     st.markdown("---")
 
     # ── Individual steps ──────────────────────────────────────────────────────
-    tab1, tab2, tab3 = st.tabs(["① Research", "② Process", "③ Build KB"])
+    tab1, tab2, tab3 = st.tabs([t("tab_research"), t("tab_process"), t("tab_build")])
 
     with tab1:
-        st.markdown("**AI-powered web research** — generates queries, searches the web, fetches Wikipedia.")
+        st.markdown(t("research_desc"))
         c1, c2, c3 = st.columns(3)
-        with c1: t1_max = st.number_input("Max docs", 10, 1000, 100, step=10)
-        with c2: t1_q   = st.number_input("Queries", 5, 30, 10)
+        with c1: t1_max = st.number_input(t("max_docs_short"), 10, 1000, 100, step=10)
+        with c2: t1_q   = st.number_input(t("queries_label"), 5, 30, 10)
         with c3:
-            t1_src = st.selectbox("Source", ["All", "Web (AI)", "Wikipedia"])
+            t1_src = st.selectbox(t("source_select"), ["All", "Web (AI)", "Wikipedia"])
 
-        if st.button("Run Research", type="primary"):
-            cmd = ["scripts/research.py", "--max", str(t1_max), "--queries", str(t1_q)]
+        if st.button(t("run_research"), type="primary"):
+            _lang = get_env("LANGUAGE", "en")
+            _region = get_env("REGION", "anywhere")
+            cmd = ["scripts/research.py", "--max", str(t1_max), "--queries", str(t1_q),
+                   "--language", _lang, "--region", _region]
             if t1_src == "Web (AI)": cmd.append("--web")
             elif t1_src == "Wikipedia": cmd.append("--wikipedia")
             ph = st.empty()
             rc = stream_command(cmd, ph)
             (st.success if rc == 0 else st.error)(
-                "Research complete!" if rc == 0 else "Research failed — see log."
+                t("research_complete") if rc == 0 else t("research_fail")
             )
 
     with tab2:
-        st.markdown("**Clean + anonymize PII + extract structured knowledge with LLM.**")
+        st.markdown(t("process_desc"))
         c1, c2 = st.columns(2)
         with c1:
-            t2_limit = st.number_input("Limit (0 = all)", 0, 10000, 0, step=50)
-            t2_fast  = st.checkbox("Fast model (cheaper)")
+            t2_limit = st.number_input(t("limit"), 0, 10000, 0, step=50)
+            t2_fast  = st.checkbox(t("fast_model"))
         with c2:
-            t2_reprocess = st.checkbox("Reprocess already-processed docs")
-            t2_nostr     = st.checkbox("No LLM structuring (fastest)")
+            t2_reprocess = st.checkbox(t("reprocess2"))
+            t2_nostr     = st.checkbox(t("no_structure"))
 
-        if st.button("Run Processing", type="primary"):
+        if st.button(t("run_process"), type="primary"):
             cmd = ["scripts/process_data.py"]
             if t2_limit:      cmd += ["--limit", str(t2_limit)]
             if t2_fast:       cmd.append("--fast-model")
@@ -1230,47 +1942,44 @@ elif page == "Pipeline":
             ph = st.empty()
             rc = stream_command(cmd, ph)
             (st.success if rc == 0 else st.error)(
-                "Processing complete!" if rc == 0 else "Processing failed — see log."
+                t("process_complete") if rc == 0 else t("process_fail")
             )
 
     with tab3:
-        st.markdown("**Index processed documents into ChromaDB for semantic search.**")
-        t3_rebuild = st.checkbox("Force full rebuild (delete existing index)")
+        st.markdown(t("build_desc"))
+        t3_rebuild = st.checkbox(t("force_rebuild"))
 
-        if st.button("Build Knowledge Base", type="primary"):
+        if st.button(t("build_kb"), type="primary"):
             cmd = ["scripts/build_rag.py"]
             if t3_rebuild: cmd.append("--rebuild")
             ph = st.empty()
             rc = stream_command(cmd, ph)
             if rc == 0:
-                st.success("Knowledge base built!")
+                st.success(t("build_complete"))
                 st.cache_resource.clear()
             else:
-                st.error("Build failed — see log.")
+                st.error(t("build_fail"))
 
     # ── Danger zone ───────────────────────────────────────────────────────────
     st.markdown("---")
-    with st.expander("🗑️  **Danger Zone — Reset All Data**"):
+    with st.expander(t("danger_title")):
         st.markdown(
-            '<div class="card card-red">'
-            "<strong>This will permanently delete all collected, processed, and indexed data.</strong><br/>"
-            "<span style='color:#64748b;font-size:0.88rem'>"
-            "Raw documents, processed JSONs, and the entire vector database will be wiped. "
-            "You will need to run the full pipeline again from scratch."
-            "</span></div>",
+            f'<div class="card card-red">'
+            f"{t('danger_warn')}<br/>"
+            f"<span style='color:#64748b;font-size:0.88rem'>{t('danger_sub')}</span></div>",
             unsafe_allow_html=True,
         )
 
-        confirm = st.checkbox("I understand this cannot be undone — delete everything")
+        confirm = st.checkbox(t("danger_confirm"))
         if confirm:
-            if st.button("🗑️  Reset All Data", type="primary", use_container_width=True):
+            if st.button(t("danger_btn"), type="primary", use_container_width=True):
                 import shutil
                 deleted = []
                 errors = []
                 for folder, label in [
-                    (ROOT / "data" / "raw",       "Raw documents"),
-                    (ROOT / "data" / "processed",  "Processed documents"),
-                    (ROOT / "data" / "vector_db",  "Vector database"),
+                    (ROOT / "data" / "raw",       t("pipeline_raw")),
+                    (ROOT / "data" / "processed",  t("pipeline_processed")),
+                    (ROOT / "data" / "vector_db",  "Vector DB"),
                 ]:
                     try:
                         if folder.exists():
@@ -1283,12 +1992,9 @@ elif page == "Pipeline":
                 st.cache_resource.clear()
 
                 if errors:
-                    st.error("Some folders could not be deleted:\n" + "\n".join(errors))
+                    st.error("\n".join(errors))
                 else:
-                    st.success(
-                        f"Deleted: {', '.join(deleted)}. "
-                        "All data has been reset. Run the pipeline to start fresh."
-                    )
+                    st.success(t("danger_ok"))
                     st.rerun()
 
 
@@ -1296,51 +2002,45 @@ elif page == "Pipeline":
 # KNOWLEDGE BASE PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Knowledge Base":
-    st.markdown('<div class="page-title">🔍 Knowledge Base</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">Search and browse the indexed knowledge.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("kb_page_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("kb_page_sub")}</div>', unsafe_allow_html=True)
 
     stats = kb_stats()
     total = sum(stats.values())
     if total == 0:
-        st.warning("Knowledge base is empty. Go to **Pipeline** to build it.")
+        st.warning(t("kb_empty_warn"))
         st.stop()
 
     c1, c2, c3 = st.columns(3)
-    with c1: st.metric("Documents",  f"{stats.get('documents',0):,} chunks")
-    with c2: st.metric("Learnings",  f"{stats.get('learnings',0):,} chunks")
-    with c3: st.metric("Summaries",  f"{stats.get('summaries',0):,} chunks")
+    with c1: st.metric(t("kb_documents"), f"{stats.get('documents',0):,} {t('kb_chunks')}")
+    with c2: st.metric(t("kb_learnings"), f"{stats.get('learnings',0):,} {t('kb_chunks')}")
+    with c3: st.metric(t("kb_summaries"), f"{stats.get('summaries',0):,} {t('kb_chunks')}")
 
     st.markdown("---")
-    st.subheader("Search")
+    st.subheader(t("kb_search_header"))
 
     @st.cache_resource(show_spinner=False)
     def get_store():
         from src.rag.vector_store import VectorStore
         return VectorStore()
 
-    query = st.text_input("Search query", placeholder="Enter any question or topic...")
+    query = st.text_input(t("kb_search_input"), placeholder=t("kb_search_placeholder"))
     col1, col2 = st.columns(2)
-    with col1: k = st.slider("Results", 1, 20, 5)
-    with col2: collection = st.selectbox("Collection", ["documents", "learnings", "summaries"])
+    with col1: k = st.slider(t("kb_results_slider"), 1, 20, 5)
+    with col2: collection = st.selectbox(t("kb_collection"), ["documents", "learnings", "summaries"])
 
     if query:
         store = get_store()
-        with st.spinner("Searching..."):
+        with st.spinner(t("kb_searching")):
             try:
                 results = store.search_with_score(query, k=k, collection=collection)
             except Exception as e:
-                st.error(
-                    f"Could not search `{collection}`: {e}\n\n"
-                    "Go to **Pipeline → Build KB** and enable **Force full rebuild** to fix the index."
-                )
+                st.error(t("kb_search_error").format(col=collection, err=e))
                 st.stop()
         if not results:
-            st.info(
-                f"No results in `{collection}`. This collection may be empty or its index is missing — "
-                "go to **Pipeline → Build KB** and enable **Force full rebuild**."
-            )
+            st.info(t("kb_no_results").format(col=collection))
         else:
-            st.markdown(f"**{len(results)} results** in `{collection}`")
+            st.markdown(t("kb_n_results").format(n=len(results), col=collection))
             for doc, score in results:
                 meta = doc.metadata
                 url   = meta.get("url", "")
@@ -1349,11 +2049,11 @@ elif page == "Knowledge Base":
                     cols = st.columns(2)
                     with cols[0]:
                         if url: st.markdown(f"[{meta.get('source_name', url)}]({url})")
-                        st.caption(f"Date: {meta.get('date','—')}")
+                        st.caption(f"{t('kb_date')} {meta.get('date','—')}")
                     with cols[1]:
                         topics = meta.get("topics", "")
                         if topics:
-                            chips = "".join(f'<span class="source-chip">{t.strip()}</span>' for t in topics.split(",") if t.strip())
+                            chips = "".join(f'<span class="source-chip">{tg.strip()}</span>' for tg in topics.split(",") if tg.strip())
                             st.markdown(chips, unsafe_allow_html=True)
                     st.text(doc.page_content[:600] + ("..." if len(doc.page_content) > 600 else ""))
 
@@ -1362,8 +2062,8 @@ elif page == "Knowledge Base":
 # DATASET PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "Dataset":
-    st.markdown('<div class="page-title">📦 Dataset</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">View, download, and publish your cleaned dataset.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("dataset_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("dataset_sub")}</div>', unsafe_allow_html=True)
 
     PROC_DIR = ROOT / "data" / "processed"
     docs = []
@@ -1374,49 +2074,52 @@ elif page == "Dataset":
             pass
 
     if not docs:
-        st.warning("No processed documents yet. Run the Pipeline first.")
+        st.warning(t("dataset_no_docs"))
         st.stop()
 
-    st.metric("Total Documents", len(docs))
+    st.metric(t("dataset_total"), len(docs))
 
     # Filter
-    search = st.text_input("Filter by title or topic", "")
+    search = st.text_input(t("dataset_filter"), "")
     if search:
         docs = [d for d in docs if
                 search.lower() in d.get("title", "").lower() or
                 search.lower() in ",".join(d.get("topics", [])).lower()]
-        st.caption(f"{len(docs)} matching")
+        st.caption(t("dataset_matching").format(n=len(docs)))
 
     # Table
     import pandas as pd
-    rows = [{"Title": d.get("title","")[:70], "Source": d.get("source_name",""),
-             "Date": d.get("date",""), "Topics": ", ".join(d.get("topics",[]))[:50],
-             "Structured": "✓" if d.get("structured") else "—"}
-            for d in docs[:300]]
+    rows = [{
+        t("dataset_col_title"):  d.get("title","")[:70],
+        t("dataset_col_source"): d.get("source_name",""),
+        t("dataset_col_date"):   d.get("date",""),
+        t("dataset_col_topics"): ", ".join(d.get("topics",[]))[:50],
+        t("dataset_col_structured"): "✓" if d.get("structured") else "—",
+    } for d in docs[:300]]
     if rows:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, height=280)
 
     # Detail
     st.markdown("---")
     titles = [d.get("title", d.get("source_id","?"))[:80] for d in docs[:100]]
-    sel = st.selectbox("View document", titles)
+    sel = st.selectbox(t("dataset_view_doc"), titles)
     if sel:
         doc = next((d for d in docs if d.get("title","").startswith(sel[:40])), None)
         if doc:
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"**Source:** {doc.get('source_name','')}")
-                st.write(f"**Date:** {doc.get('date','—')}")
-                st.write(f"**Author:** {doc.get('author','—')}")
+                st.write(f"{t('dataset_source')} {doc.get('source_name','')}")
+                st.write(f"{t('dataset_date')} {doc.get('date','—')}")
+                st.write(f"{t('dataset_author')} {doc.get('author','—')}")
                 if doc.get("url"):
-                    st.write(f"**URL:** [{doc['url']}]({doc['url']})")
+                    st.write(f"{t('dataset_url')} [{doc['url']}]({doc['url']})")
             with col2:
-                chips = "".join(f'<span class="source-chip">{t}</span>' for t in doc.get("topics",[]))
+                chips = "".join(f'<span class="source-chip">{tg}</span>' for tg in doc.get("topics",[]))
                 if chips: st.markdown(chips, unsafe_allow_html=True)
-                st.write(f"**Structured:** {'Yes' if doc.get('structured') else 'No'}")
-            for field, label in [("summary","Summary"), ("key_points","Key Points"), ("learnings","Learnings")]:
+                st.write(f"{t('dataset_structured_lbl')} {t('dataset_yes') if doc.get('structured') else t('dataset_no')}")
+            for field, lbl_key in [("summary","dataset_summary"), ("key_points","dataset_key_points"), ("learnings","dataset_learnings")]:
                 if doc.get(field):
-                    with st.expander(label):
+                    with st.expander(t(lbl_key)):
                         st.write(doc[field])
 
     st.markdown("---")
@@ -1424,67 +2127,55 @@ elif page == "Dataset":
     with col1:
         jsonl = "\n".join(json.dumps(d, ensure_ascii=False) for d in docs)
         subject_slug = get_env("SUBJECT", "dataset").replace(" ", "_")
-        st.download_button("⬇️  Download JSONL", data=jsonl,
+        st.download_button(t("dataset_download"), data=jsonl,
                            file_name=f"{subject_slug}_dataset.jsonl",
                            mime="application/json", use_container_width=True)
     with col2:
         hf_token = get_env("HF_TOKEN")
         if not hf_token:
-            st.warning("Set HF_TOKEN in Setup to enable upload.")
+            st.warning(t("dataset_hf_warn"))
         else:
-            repo_id  = st.text_input("HuggingFace Repo ID",
+            repo_id  = st.text_input(t("dataset_hf_repo"),
                                      value=get_env("HF_REPO_ID", f"username/{subject_slug}-sme"))
-            private  = st.checkbox("Private")
-            if st.button("⬆️  Upload to HuggingFace", type="primary", use_container_width=True):
+            private  = st.checkbox(t("dataset_private"))
+            if st.button(t("dataset_upload"), type="primary", use_container_width=True):
                 ph = st.empty()
                 cmd = ["scripts/upload_to_hf.py", "--repo-id", repo_id]
                 if private: cmd.append("--private")
                 rc = stream_command(cmd, ph)
                 if rc == 0:
-                    st.success(f"Uploaded! View at https://huggingface.co/datasets/{repo_id}")
+                    st.success(t("dataset_upload_ok").format(url=f"https://huggingface.co/datasets/{repo_id}"))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ABOUT PAGE
 # ══════════════════════════════════════════════════════════════════════════════
 elif page == "About":
-    st.markdown('<div class="page-title">👤 About</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-sub">The person behind AI Subject Matter Expert.</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-title">{t("about_title")}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="page-sub">{t("about_sub")}</div>', unsafe_allow_html=True)
 
     col_left, col_right = st.columns([2, 1])
 
     with col_left:
-        st.markdown("""
+        st.markdown(f"""
 <div class="card card-blue">
 <h2 style="margin-top:0">Albert G.D.</h2>
 <p style="color:#475569;font-size:1rem">
-Builder of AI-powered tools that make expert knowledge accessible to everyone.
+{t("about_bio")}
 </p>
 <p>
-AI Subject Matter Expert is an open-source project that lets you spin up a fully 
-grounded, RAG-powered AI expert on <em>any</em> topic — from space exploration to 
-family law — in minutes, using free or low-cost LLM providers.
+{t("about_project_desc")}
 </p>
 <p>
-The goal is simple: democratise access to deep, reliable knowledge without needing 
-a background in machine learning or paying enterprise prices.
+{t("about_goal")}
 </p>
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("### About This Project")
-        st.markdown("""
-**AI Subject Matter Expert** is a fully open-source, self-hosted knowledge engine.
+        st.markdown(t("about_project_title"))
+        st.markdown(t("about_features"))
 
-- Researches any topic autonomously using web search + Wikipedia  
-- Cleans, anonymises, and structures knowledge with LLMs  
-- Stores everything in a local vector database (ChromaDB)  
-- Answers questions with cited, grounded responses — no hallucination  
-- Works with free providers (Groq, Google Gemini) or paid ones (Anthropic, OpenAI)  
-- Exports your dataset to JSONL or HuggingFace  
-        """)
-
-        st.markdown("### Get in Touch")
+        st.markdown(t("about_contact_title"))
         st.markdown("""
 <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.5rem">
   <a href="https://www.linkedin.com/in/albertgd" target="_blank"
@@ -1515,17 +2206,17 @@ a background in machine learning or paying enterprise prices.
 """, unsafe_allow_html=True)
 
     with col_right:
-        st.markdown("""
+        st.markdown(f"""
 <div class="card card-green" style="text-align:center">
   <div style="font-size:3rem">🧠</div>
   <div style="font-weight:700;font-size:1.1rem;margin:0.5rem 0">AI SME</div>
-  <div style="color:#64748b;font-size:0.85rem">Open-source · Self-hosted<br/>Any topic · Any LLM</div>
+  <div style="color:#64748b;font-size:0.85rem">{t("about_tagline")}</div>
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("""
+        st.markdown(f"""
 <div class="card card-amber" style="margin-top:0.8rem">
-  <div style="font-weight:700;margin-bottom:0.4rem">Stack</div>
+  <div style="font-weight:700;margin-bottom:0.4rem">{t("about_stack_title")}</div>
   <div style="font-size:0.83rem;color:#475569;line-height:1.8">
     Python · Streamlit<br/>
     ChromaDB · LangChain<br/>
@@ -1536,8 +2227,8 @@ a background in machine learning or paying enterprise prices.
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("""
+        st.markdown(f"""
 <div class="card card-blue" style="margin-top:0.8rem;font-size:0.83rem;color:#475569">
-  Built with the belief that everyone deserves access to expert-level knowledge.
+  {t("about_belief")}
 </div>
 """, unsafe_allow_html=True)

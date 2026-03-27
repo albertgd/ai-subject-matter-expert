@@ -8,8 +8,20 @@ Produces one document per article section to keep chunks meaningful.
 import logging
 from typing import Dict, List, Optional
 
-from src.config import SUBJECT, SUBJECT_KEYWORDS, MAX_DOCS_PER_SOURCE
+from src.config import SUBJECT, SUBJECT_KEYWORDS, MAX_DOCS_PER_SOURCE, LANGUAGE, REGION
 from src.research.base import BaseCollector
+
+# Extra seed pages to fetch when a specific region is selected (Spanish)
+_REGION_SEED_PAGES_ES = {
+    "spain":     ["España", "Derecho español", "Tribunal Supremo de España", "Constitución española de 1978"],
+    "catalunya": ["Cataluña", "Generalitat de Cataluña", "Dret civil català", "Estatuto de Autonomía de Cataluña"],
+    "europe":    ["Unión Europea", "Tribunal de Justicia de la Unión Europea", "Derecho europeo", "Consejo de Europa"],
+}
+_REGION_SEED_PAGES_EN = {
+    "spain":     ["Spain", "Spanish law", "Supreme Court of Spain"],
+    "catalunya": ["Catalonia", "Generalitat de Catalunya", "Catalan law"],
+    "europe":    ["European Union", "Court of Justice of the European Union", "European law"],
+}
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +31,15 @@ class WikipediaSource(BaseCollector):
 
     SOURCE_NAME = "wikipedia"
 
-    def __init__(self, **kwargs):
+    def __init__(self, language: str = LANGUAGE, region: str = REGION, **kwargs):
         super().__init__(**kwargs)
+        self._language = language
+        self._region   = region
+        wiki_lang = "es" if language == "es" else "en"
         try:
             import wikipediaapi
             self._wiki = wikipediaapi.Wikipedia(
-                language="en",
+                language=wiki_lang,
                 user_agent=(
                     "AI-SME-Bot/1.0 "
                     "(https://github.com/albertgd/ai-subject-matter-expert)"
@@ -42,8 +57,14 @@ class WikipediaSource(BaseCollector):
         docs = []
         seen_titles = set()
 
+        # Build seed list: subject keywords + region-specific pages
+        region_seeds: List[str] = []
+        if self._region != "anywhere":
+            seed_map = _REGION_SEED_PAGES_ES if self._language == "es" else _REGION_SEED_PAGES_EN
+            region_seeds = seed_map.get(self._region, [])
+
         # Search using each keyword
-        for keyword in [SUBJECT] + SUBJECT_KEYWORDS:
+        for keyword in [SUBJECT] + SUBJECT_KEYWORDS + region_seeds:
             if len(docs) >= max_docs:
                 break
             try:
@@ -82,7 +103,8 @@ class WikipediaSource(BaseCollector):
     def _page_to_documents(self, page) -> List[Dict]:
         """Convert a Wikipedia page into one document per top-level section."""
         docs = []
-        base_url = f"https://en.wikipedia.org/wiki/{page.title.replace(' ', '_')}"
+        wiki_lang = "es" if self._language == "es" else "en"
+        base_url = f"https://{wiki_lang}.wikipedia.org/wiki/{page.title.replace(' ', '_')}"
 
         def _make_doc(title: str, text: str, section: str) -> Optional[Dict]:
             text = text.strip()

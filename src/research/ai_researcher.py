@@ -21,6 +21,7 @@ from typing import Dict, List, Optional
 from src.config import (
     SUBJECT, SUBJECT_DESCRIPTION, SUBJECT_KEYWORDS,
     MAX_DOCS_PER_SOURCE, MAX_SEARCH_RESULTS,
+    LANGUAGE, REGION,
 )
 from src.research.base import BaseCollector
 from src.research.search import search
@@ -30,6 +31,13 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_N_QUERIES = 10
 _MAX_URLS_PER_QUERY = 5
+
+_REGION_CONTEXT = {
+    "spain":     {"en": "in Spain (Spanish law and context)",  "es": "en España (derecho y contexto español)"},
+    "catalunya": {"en": "in Catalonia, Spain",                 "es": "en Catalunya (derecho catalán y español)"},
+    "europe":    {"en": "in Europe (EU law and context)",      "es": "en Europa (derecho europeo y de la UE)"},
+    "anywhere":  {"en": "",                                    "es": ""},
+}
 
 
 class AIResearcher(BaseCollector):
@@ -43,8 +51,10 @@ class AIResearcher(BaseCollector):
 
     SOURCE_NAME = "ai_researcher"
 
-    def __init__(self, **kwargs):
+    def __init__(self, language: str = LANGUAGE, region: str = REGION, **kwargs):
         super().__init__(**kwargs)
+        self._language = language
+        self._region   = region
         self._llm = None
         self._fetcher = WebFetcher()
 
@@ -66,7 +76,7 @@ class AIResearcher(BaseCollector):
         Full research pipeline for a subject.
         Returns list of raw document dicts.
         """
-        logger.info(f"Starting AI research on: '{subject}'")
+        logger.info(f"Starting AI research on: '{subject}' (lang={self._language}, region={self._region})")
 
         queries = self.generate_queries(subject, n=n_queries)
         logger.info(f"Generated {len(queries)} search queries")
@@ -102,20 +112,34 @@ class AIResearcher(BaseCollector):
     # ── Query generation ──────────────────────────────────
     def generate_queries(self, subject: str, n: int = _DEFAULT_N_QUERIES) -> List[str]:
         """Ask the LLM to generate n diverse search queries for the subject."""
+        region_ctx = _REGION_CONTEXT.get(self._region, {}).get(self._language, "")
+        region_note = f"\nRegion focus: {region_ctx}" if region_ctx else ""
+
+        if self._language == "es":
+            lang_instruction = (
+                "IMPORTANTE: Genera las consultas de búsqueda en ESPAÑOL. "
+                "Usa terminología española/latinoamericana adecuada para el tema."
+            )
+            example_note = 'Ejemplo: ["consulta 1 en español", "consulta 2 en español", ...]'
+        else:
+            lang_instruction = ""
+            example_note = 'Example: ["query 1", "query 2", ...]'
+
         prompt = f"""You are a research assistant. Generate {n} diverse, specific web search queries
 to gather comprehensive information about: {subject}
 
 Context: {SUBJECT_DESCRIPTION}
-Key topics: {", ".join(SUBJECT_KEYWORDS[:8])}
+Key topics: {", ".join(SUBJECT_KEYWORDS[:8])}{region_note}
 
 Requirements:
 - Cover different aspects: fundamentals, recent developments, practical applications, key concepts
 - Mix broad overview queries with specific technical queries
 - Suitable for finding high-quality educational and reference content
 - Do NOT include site: operators
+{lang_instruction}
 
 Return ONLY a JSON array of {n} query strings, nothing else.
-Example: ["query 1", "query 2", ...]"""
+{example_note}"""
 
         try:
             from langchain_core.messages import HumanMessage
@@ -161,20 +185,38 @@ Example: ["query 1", "query 2", ...]"""
         return [r for _, r in scored[:keep]]
 
     # ── Fallback query builder ─────────────────────────────
-    @staticmethod
-    def _fallback_queries(subject: str, n: int) -> List[str]:
-        templates = [
-            f"{subject} overview",
-            f"{subject} introduction",
-            f"how does {subject} work",
-            f"{subject} key concepts",
-            f"{subject} applications",
-            f"{subject} history",
-            f"{subject} latest research",
-            f"{subject} examples",
-            f"{subject} tutorial",
-            f"what is {subject}",
-            f"{subject} fundamentals",
-            f"{subject} advanced topics",
-        ]
+    def _fallback_queries(self, subject: str, n: int) -> List[str]:
+        region_ctx = _REGION_CONTEXT.get(self._region, {}).get(self._language, "")
+        suffix = f" {region_ctx}" if region_ctx else ""
+
+        if self._language == "es":
+            templates = [
+                f"{subject} resumen{suffix}",
+                f"{subject} introducción{suffix}",
+                f"cómo funciona {subject}{suffix}",
+                f"{subject} conceptos clave{suffix}",
+                f"{subject} aplicaciones{suffix}",
+                f"{subject} historia{suffix}",
+                f"{subject} investigación reciente{suffix}",
+                f"{subject} ejemplos{suffix}",
+                f"qué es {subject}{suffix}",
+                f"{subject} fundamentos{suffix}",
+                f"{subject} guía completa{suffix}",
+                f"{subject} temas avanzados{suffix}",
+            ]
+        else:
+            templates = [
+                f"{subject} overview{suffix}",
+                f"{subject} introduction{suffix}",
+                f"how does {subject} work{suffix}",
+                f"{subject} key concepts{suffix}",
+                f"{subject} applications{suffix}",
+                f"{subject} history{suffix}",
+                f"{subject} latest research{suffix}",
+                f"{subject} examples{suffix}",
+                f"{subject} tutorial{suffix}",
+                f"what is {subject}{suffix}",
+                f"{subject} fundamentals{suffix}",
+                f"{subject} advanced topics{suffix}",
+            ]
         return templates[:n]

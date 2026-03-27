@@ -136,13 +136,19 @@ class TestSearchModule:
 class TestAIResearcherFallbackQueries:
     def test_fallback_queries_returns_correct_count(self):
         from src.research.ai_researcher import AIResearcher
-        queries = AIResearcher._fallback_queries("quantum physics", 5)
+        researcher = AIResearcher.__new__(AIResearcher)
+        researcher._language = "en"
+        researcher._region = "anywhere"
+        queries = researcher._fallback_queries("quantum physics", 5)
         assert len(queries) == 5
         assert all(isinstance(q, str) for q in queries)
         assert all("quantum physics" in q for q in queries)
 
     def test_fallback_queries_subject_included(self):
         from src.research.ai_researcher import AIResearcher
-        queries = AIResearcher._fallback_queries("machine learning", 3)
+        researcher = AIResearcher.__new__(AIResearcher)
+        researcher._language = "en"
+        researcher._region = "anywhere"
+        queries = researcher._fallback_queries("machine learning", 3)
         for q in queries:
             assert "machine learning" in q
